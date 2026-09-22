@@ -52,6 +52,24 @@ python scripts/run_bm25.py --split dev
 The runner deterministically retrieves exactly three passages, saves rankings,
 and reports Recall@3 and MRR when qrels are provided.
 
+## Run the simple verifier baselines
+
+After preparing the AVeriTeC claims, run the claim-only diagnostic baseline:
+
+```powershell
+python scripts/train_tfidf_logreg.py --evidence-mode claim_only
+```
+
+To test the verifier in isolation using human-annotated AVeriTeC answers:
+
+```powershell
+python scripts/train_tfidf_logreg.py --evidence-mode gold
+```
+
+`gold` is a gold-evidence verification experiment only. Its score must not be
+reported as an end-to-end system result; the future BM25-evidence run will use
+the same classifier interface with retrieved passages instead.
+
 ## Tests
 
 ```powershell
