@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Data and generated experiment artifacts
+data/raw/
+data/processed/
+data/external/
+outputs/
+
+# Secrets and local configuration
+.env
+.env.*
+!env.example
+
+# Editor / OS files
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
