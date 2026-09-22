@@ -154,6 +154,9 @@ Every evaluation run saves a configuration copy, dataset/version identifier, see
 - Deduplicate documents and preserve provenance for each passage.
 - Maintain a blocklist/review process for fact-check or otherwise verdict-revealing pages that appear among cited sources.
 - Treat the result as a frozen corpus snapshot for reproducibility.
+- Do not crawl the complete URL manifest by default. First create a fixed,
+  stratified claim subset for evidence-aware external evaluation and document its
+  seed, class counts, source-URL count, and per-claim source cap if used.
 - If manually annotating retrieval, pool candidates from multiple retrievers (for example BM25 top 20 plus dense top 20). Report metrics as **pooled** Recall@3/MRR.
 
 ## 7. Implementation phases and completion criteria

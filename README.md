@@ -70,6 +70,41 @@ python scripts/train_tfidf_logreg.py --evidence-mode gold
 reported as an end-to-end system result; the future BM25-evidence run will use
 the same classifier interface with retrieved passages instead.
 
+## Prepare the external Snopes records
+
+This creates a clean, three-class DisinfoMM/Snopes claim set and preserves its
+cited-source URLs. It does **not** fetch web pages or use the Snopes explanation
+as evidence.
+
+```powershell
+python scripts/prepare_snopes.py --download
+```
+
+Then build the deduplicated source manifest before attempting any fetching:
+
+```powershell
+python scripts/build_snopes_manifest.py
+```
+
+For the future evidence-aware external test, freeze a manageable stratified
+subset before any fetching:
+
+```powershell
+python scripts/sample_snopes_external_subset.py --size 300 --seed 718
+```
+
+The following source-corpus stage will fetch only permitted cited URLs, log
+provenance/failures, filter verdict-revealing material, and construct passages.
+
+Before that corpus exists, run the valid claim-only external-transfer diagnostic:
+
+```powershell
+python scripts/evaluate_external_tfidf.py
+```
+
+It trains only on AVeriTeC's three label-compatible classes and evaluates on
+Snopes. It is not a substitute for the later evidence-aware external pipeline.
+
 ## Tests
 
 ```powershell
