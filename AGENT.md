@@ -19,6 +19,50 @@ The system is decision support, not an automatic authority on truth.
 
 ---
 
+## Current Implementation Status
+
+The detailed build contract and command reference live in
+[`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) and [`README.md`](README.md).
+This section is the concise source of truth for current progress.
+
+### Implemented and validated locally
+
+- AVeriTeC train/dev claim downloader, normalization, immutable-split
+  preparation, and data-quality audit. One official training row with an empty
+  claim is excluded transparently and recorded in the audit output.
+- Shared claim/evidence schemas, deterministic BM25 retriever, and Recall@3/MRR
+  evaluation code.
+- TF-IDF + class-balanced multinomial logistic-regression verifier, including
+  claim-only and gold-evidence diagnostic modes with standardized Macro-F1,
+  accuracy, per-class metrics, and confusion matrices.
+- DisinfoMM English/Snopes filtering, conservative three-class label mapping,
+  cited-source manifest generation, and a deterministic 300-claim stratified
+  subset for future evidence-aware external evaluation.
+- A claim-only AVeriTeC-to-Snopes external-transfer diagnostic.
+
+### Important current boundaries
+
+- The full AVeriTeC knowledge store is **not** downloaded locally. It should be
+  prepared in Colab before running actual BM25 retrieval results or the
+  BM25-evidence classifier.
+- Gold-evidence classifier results are verifier-isolation diagnostics, not
+  end-to-end retrieval results.
+- Snopes explanations, verdicts, ratings, and fact-check pages are never model
+  evidence. Cited-source fetching has not started; it must follow the manifest,
+  policy checks, provenance logging, and leakage filters in the implementation
+  plan.
+
+### Still to implement
+
+1. Prepare the official AVeriTeC knowledge store in Colab; run BM25 Recall@3,
+   MRR, and the BM25 + TF-IDF/logistic-regression end-to-end baseline.
+2. Run the zero-shot LLM baseline with a frozen prompt, recorded model/version,
+   deterministic settings where available, and saved raw outputs.
+3. Add dense retrieval, ModernBERT, Laya, calibration, and the evidence-aware
+   external Snopes pipeline in that order of priority.
+
+---
+
 ## Primary User Flow
 
 ```text
