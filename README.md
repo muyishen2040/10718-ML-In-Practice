@@ -2,13 +2,16 @@
 
 An evidence-first claim-verification project for 10-718 ML in Practice. See
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the agreed architecture
-and experiment sequence.
+and experiment sequence. See [COLAB.md](COLAB.md) for the large-corpus and
+LLM-baseline workflow.
 
 ## Current status
 
-The repository currently implements the foundation for the AVeriTeC data
-pipeline and a BM25 retrieval runner. Classifier and LLM baselines are the next
-phases.
+The repository implements runnable checkpoint baselines: deterministic BM25,
+TF-IDF + multinomial logistic regression, and a zero-shot, evidence-only LLM
+runner. It also includes data-quality audits, retrieval/classification/error
+metrics, run manifests, and a Colab runbook. The full AVeriTeC knowledge store
+is intentionally not included in Git.
 
 ## Setup
 
@@ -33,7 +36,7 @@ The official AVeriTeC knowledge store is large. For BM25, prepare or place a
 static passage corpus at:
 
 ```text
-data/processed/averitec/evidence_corpus.jsonl
+data/processed/averitec/<split>_evidence_corpus.jsonl
 ```
 
 Each line must contain at least `passage_id` and `text`; `url` and `metadata`
@@ -50,7 +53,15 @@ python scripts/run_bm25.py --split dev
 ```
 
 The runner deterministically retrieves exactly three passages, saves rankings,
-and reports Recall@3 and MRR when qrels are provided.
+and reports evidence Hit@3, passage Recall@3, Precision@3, and MRR when qrels
+are provided. The corpus/qrels builder labels URL-based evidence coverage
+explicitly; it does not claim exact passage-level human relevance.
+
+The large archive normalizer and passage builder stream records to disk. The
+official AVeriTeC archive is recognized as one candidate pool per claim, and
+BM25 indexes one such pool at a time—preventing cross-claim retrieval and
+avoiding a global in-memory index. Details, including the large train-shard
+requirement, are in [COLAB.md](COLAB.md).
 
 ## Run the simple verifier baselines
 
@@ -69,6 +80,16 @@ python scripts/train_tfidf_logreg.py --evidence-mode gold
 `gold` is a gold-evidence verification experiment only. Its score must not be
 reported as an end-to-end system result; the future BM25-evidence run will use
 the same classifier interface with retrieved passages instead.
+
+Use `--evidence-mode gold_all` only as an uncapped oracle upper bound. It is
+not comparable to the user-facing top-three-evidence setting.
+
+## Run the LLM baseline
+
+Install `requirements-colab.txt`, set `OPENAI_API_KEY` outside the repository,
+and follow [COLAB.md](COLAB.md). The runner requires an exact model ID and
+stores the frozen prompt, selected evidence IDs, raw structured response, token
+usage, and errors for reproducibility.
 
 ## Prepare the external Snopes records
 

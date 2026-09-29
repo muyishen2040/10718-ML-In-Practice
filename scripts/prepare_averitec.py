@@ -17,6 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data.averitec import load_split_with_rejections, split_audit, write_jsonl  # noqa: E402
+from src.data.quality import split_overlap_audit  # noqa: E402
 
 OFFICIAL_CLAIM_URLS = {
     "train": "https://huggingface.co/chenxwh/AVeriTeC/resolve/main/data/train.json?download=true",
@@ -59,6 +60,7 @@ def main() -> None:
         "raw_sha256": {},
         "rejections": {},
     }
+    prepared_records = {}
     for split in splits:
         source = raw_dir / f"{split}.json"
         if not source.exists():
@@ -68,6 +70,9 @@ def main() -> None:
         audit["splits"][split] = split_audit(records)  # type: ignore[index]
         audit["raw_sha256"][split] = sha256(source)  # type: ignore[index]
         audit["rejections"][split] = rejections  # type: ignore[index]
+        prepared_records[split] = records
+
+    audit["cross_split_overlap"] = split_overlap_audit(prepared_records)
 
     (processed_dir / "audit.json").write_text(json.dumps(audit, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(audit, indent=2))

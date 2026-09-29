@@ -30,11 +30,16 @@ This section is the concise source of truth for current progress.
 - AVeriTeC train/dev claim downloader, normalization, immutable-split
   preparation, and data-quality audit. One official training row with an empty
   claim is excluded transparently and recorded in the audit output.
-- Shared claim/evidence schemas, deterministic BM25 retriever, and Recall@3/MRR
-  evaluation code.
+- Shared claim/evidence schemas, deterministic per-claim-pool BM25 retriever,
+  archive-layout inspector, official `url2text` archive adapter,
+  candidate-document chunker, URL-based qrels builder, and evidence Hit@3 /
+  passage Recall@3 / Precision@3 / MRR evaluation code.
 - TF-IDF + class-balanced multinomial logistic-regression verifier, including
-  claim-only and gold-evidence diagnostic modes with standardized Macro-F1,
-  accuracy, per-class metrics, and confusion matrices.
+  claim-only, top-three gold-evidence, gold-all oracle, and retrieved-evidence
+  modes with standardized verdict, asymmetric-error, and calibration metrics.
+- Frozen protocol configuration, experiment manifests, end-to-end
+  retrieval-coverage diagnostics, baseline-summary generation, and a Colab
+  runbook. The zero-shot OpenAI LLM runner is implemented but not executed.
 - DisinfoMM English/Snopes filtering, conservative three-class label mapping,
   cited-source manifest generation, and a deterministic 300-claim stratified
   subset for future evidence-aware external evaluation.
@@ -54,10 +59,12 @@ This section is the concise source of truth for current progress.
 
 ### Still to implement
 
-1. Prepare the official AVeriTeC knowledge store in Colab; run BM25 Recall@3,
-   MRR, and the BM25 + TF-IDF/logistic-regression end-to-end baseline.
-2. Run the zero-shot LLM baseline with a frozen prompt, recorded model/version,
-   deterministic settings where available, and saved raw outputs.
+1. Run the AVeriTeC archive adapter in Colab and inspect its audit; then run
+   URL-based evidence Hit@3/MRR and the BM25 + TF-IDF/logistic-regression
+   end-to-end baseline. The train corpus requires all three large official
+   train shards.
+2. Run the zero-shot LLM baseline with a frozen prompt, recorded exact model
+   ID/version, deterministic settings where available, and saved raw outputs.
 3. Add dense retrieval, ModernBERT, Laya, calibration, and the evidence-aware
    external Snopes pipeline in that order of priority.
 

@@ -17,8 +17,13 @@ The checkpoint scope is the AVeriTeC baselines. Snopes infrastructure is added a
 
 - Respect the official train/dev/test split.
 - Use train for fitting, dev for all choices (hyperparameters, prompt revisions, preprocessing), and test once for final reporting.
-- Retrieve exactly **three** passages for every end-to-end prediction.
-- Retrieval metrics: Recall@3 and MRR against annotated AVeriTeC evidence.
+- Display exactly **three** passages for every end-to-end prediction. The
+  pipeline may cache a larger deterministic candidate set (top 20) only for
+  reranking; all primary retrieval metrics remain at three.
+- Retrieval metrics: evidence Hit@3, source-URL passage Recall@3, Precision@3,
+  and MRR. Until exact passage judgments are aligned to the official knowledge
+  store, call these annotated-source-URL proxy metrics rather than exact
+  human-passage recall.
 - Verdict metrics: Macro-F1 (primary), accuracy, per-class precision/recall/F1, and a confusion matrix.
 - Four verdict labels: `Supported`, `Refuted`, `Not Enough Evidence`, `Conflicting Evidence`.
 
@@ -38,7 +43,7 @@ The checkpoint scope is the AVeriTeC baselines. Snopes infrastructure is added a
 
 | Baseline | Evidence input | Output | Primary measurement |
 |---|---|---|---|
-| BM25 retrieval | static AVeriTeC corpus | ranked top 3 passages | Recall@3, MRR |
+| BM25 retrieval | static per-claim AVeriTeC candidate pool | ranked top 3 passages | evidence Hit@3, MRR |
 | Claim-only logistic regression | claim | four-way verdict | Macro-F1 |
 | BM25 + TF-IDF logistic regression | claim + same top 3 BM25 passages | four-way verdict | Macro-F1 |
 | Zero-shot LLM | claim + same top 3 BM25 passages | four-way verdict | Macro-F1 |
@@ -215,7 +220,9 @@ Add dense retrieval, ModernBERT, Laya, calibration, and optionally the manually 
 
 ## 8. Decisions intentionally deferred
 
-- Exact AVeriTeC download/version and parsing details, to be resolved by inspecting the official release.
+- Exact AVeriTeC archive contents still require an audit on download, but the
+  known official per-claim `url2text` JSONL format is supported and preserves
+  the candidate-pool boundary.
 - LLM provider/model, pending available credentials, budget, and instructor expectations.
 - Dense encoder, cross-encoder reranker, ModernBERT variant, and Laya training configuration.
 - Size of a manually annotated Snopes subset; it is not required for the checkpoint.

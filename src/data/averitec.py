@@ -101,6 +101,7 @@ def raw_to_record(raw: dict[str, Any], split: str, index: int) -> ClaimRecord:
         metadata={
             "dataset": "AVeriTeC",
             "split": split,
+            "source_index": index,
             "claim_date": raw.get("claim_date"),
             "speaker": raw.get("speaker"),
             "reporting_source": raw.get("reporting_source"),

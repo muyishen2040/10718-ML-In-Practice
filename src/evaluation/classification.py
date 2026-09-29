@@ -22,7 +22,7 @@ def evaluate_predictions(
     invalid = (set(true_labels) | set(predicted_labels)) - set(labels)
     if invalid:
         raise ValueError(f"Predictions contain invalid labels: {sorted(invalid)}")
-    return {
+    report: dict[str, Any] = {
         "claim_count": len(materialized),
         "macro_f1": float(f1_score(true_labels, predicted_labels, labels=labels, average="macro", zero_division=0)),
         "accuracy": float(accuracy_score(true_labels, predicted_labels)),
@@ -38,3 +38,38 @@ def evaluate_predictions(
             "matrix": confusion_matrix(true_labels, predicted_labels, labels=labels).tolist(),
         },
     }
+    supported = "Supported"
+    report["decision_error_rates"] = {
+        "false_reassurance_count": sum(true != supported and predicted == supported for true, predicted in zip(true_labels, predicted_labels, strict=True)),
+        "false_reassurance_rate": sum(true != supported and predicted == supported for true, predicted in zip(true_labels, predicted_labels, strict=True)) / len(materialized),
+        "false_alarm_count": sum(true == supported and predicted != supported for true, predicted in zip(true_labels, predicted_labels, strict=True)),
+        "false_alarm_rate": sum(true == supported and predicted != supported for true, predicted in zip(true_labels, predicted_labels, strict=True)) / len(materialized),
+    }
+    if all(isinstance(row.get("probabilities"), dict) for row in materialized):
+        report["calibration"] = calibration_metrics(materialized, labels)
+    return report
+
+
+def calibration_metrics(predictions: Sequence[dict[str, Any]], labels: Sequence[str], bin_count: int = 10) -> dict[str, float | int]:
+    """Compute multiclass Brier score and ECE from model probabilities.
+
+    LLM self-reported confidence is intentionally not accepted as a probability
+    distribution and therefore does not receive a calibration score.
+    """
+    brier_total = 0.0
+    confidence_bins: list[list[tuple[float, float]]] = [[] for _ in range(bin_count)]
+    for row in predictions:
+        probabilities = row["probabilities"]
+        values = {label: float(probabilities.get(label, 0.0)) for label in labels}
+        brier_total += sum((values[label] - float(row["true_label"] == label)) ** 2 for label in labels)
+        predicted_label, confidence = max(values.items(), key=lambda item: item[1])
+        bin_index = min(int(confidence * bin_count), bin_count - 1)
+        confidence_bins[bin_index].append((confidence, float(predicted_label == row["true_label"])))
+    ece = 0.0
+    for values in confidence_bins:
+        if not values:
+            continue
+        avg_confidence = sum(value[0] for value in values) / len(values)
+        avg_accuracy = sum(value[1] for value in values) / len(values)
+        ece += len(values) / len(predictions) * abs(avg_confidence - avg_accuracy)
+    return {"multiclass_brier_score": brier_total / len(predictions), "expected_calibration_error": ece, "ece_bin_count": bin_count}

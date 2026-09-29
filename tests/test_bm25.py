@@ -20,5 +20,7 @@ def test_bm25_retrieves_expected_passage() -> None:
 def test_retrieval_metrics() -> None:
     metrics = evaluate_rankings({"c1": ["x", "gold"]}, {"c1": ["gold"]}, k=3)
 
-    assert metrics["recall_at_3"] == 1.0
+    assert metrics["evidence_hit_at_3"] == 1.0
+    assert metrics["passage_recall_at_3"] == 1.0
+    assert metrics["precision_at_3"] == 1 / 3
     assert metrics["mrr"] == 0.5

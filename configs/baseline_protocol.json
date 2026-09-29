@@ -1,0 +1,34 @@
+{
+  "protocol_name": "averitec_baselines_v1",
+  "primary_dataset": "AVeriTeC official claim files and static knowledge store",
+  "development_split_policy": {
+    "fit": "train",
+    "selection": "dev",
+    "reporting_before_hidden_test": "dev only; do not call these final test results"
+  },
+  "canonical_labels": [
+    "Supported",
+    "Refuted",
+    "Not Enough Evidence",
+    "Conflicting Evidence"
+  ],
+  "user_facing_evidence_limit": 3,
+  "retrieval_metrics": [
+    "evidence_hit_at_3",
+    "passage_recall_at_3",
+    "precision_at_3",
+    "mrr"
+  ],
+  "verdict_metrics": [
+    "macro_f1",
+    "accuracy",
+    "per_class_precision_recall_f1",
+    "confusion_matrix",
+    "false_reassurance_rate",
+    "false_alarm_rate",
+    "multiclass_brier_score",
+    "expected_calibration_error"
+  ],
+  "retrieval_judgment_note": "Until exact passage-level annotations are aligned with the downloaded knowledge store, source-URL qrels are an annotated-source-URL proxy and must be reported as such.",
+  "llm_rule": "Use only saved candidate passages, record exact model identifier/prompt/parameters, and never treat self-reported confidence as calibrated probability."
+}
