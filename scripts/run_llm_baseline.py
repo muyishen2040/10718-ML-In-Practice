@@ -14,8 +14,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.evaluation.classification import evaluate_predictions  # noqa: E402
+from src.evaluation.end_to_end import annotate_retrieval_coverage, evaluate_by_retrieval_coverage  # noqa: E402
 from src.utils.io import read_jsonl, write_jsonl  # noqa: E402
-from src.utils.runs import write_run_manifest  # noqa: E402
+from src.utils.runs import resolve_run_directory, write_run_manifest  # noqa: E402
 from src.verification.llm_zero_shot import (  # noqa: E402
     SYSTEM_PROMPT,
     build_prediction,
@@ -54,6 +55,8 @@ def main() -> None:
     parser.add_argument("--model", required=True, help="Record an exact API model ID or snapshot, never an informal label.")
     parser.add_argument("--variant", choices=("classify_top3", "rerank_top20_and_classify"), default="classify_top3")
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "outputs" / "llm")
+    parser.add_argument("--run-name", help="Optional name for an isolated, non-overwriting run subdirectory.")
+    parser.add_argument("--qrels", type=Path, help="Optional relevance judgments for automatic evidence-coverage diagnostics.")
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-claims", type=int, default=0, help="0 means all ranked claims; use a small number for a cost-controlled pilot.")
     parser.add_argument("--max-chars-per-passage", type=int, default=1200)
@@ -61,6 +64,10 @@ def main() -> None:
     args = parser.parse_args()
     if not os.environ.get("OPENAI_API_KEY"):
         parser.error("OPENAI_API_KEY is not set. In Colab, set it with getpass; never commit it.")
+    try:
+        args.output_dir = resolve_run_directory(args.output_dir, args.run_name)
+    except ValueError as error:
+        parser.error(str(error))
     candidate_limit = 3 if args.variant == "classify_top3" else 20
     claims = {str(row["claim_id"]): row for row in read_jsonl(args.claims)}
     rankings = read_jsonl(args.rankings)
@@ -90,7 +97,12 @@ def main() -> None:
             continue
         if claim_id in cached:
             parsed = cached[claim_id]["parsed"]
-            predictions.append(parsed["prediction"])
+            prediction = parsed["prediction"]
+            prediction.setdefault(
+                "evidence_passage_ids",
+                prediction.get("selected_passage_ids") if args.variant == "rerank_top20_and_classify" else [item["passage_id"] for item in passages],
+            )
+            predictions.append(prediction)
             continue
         try:
             user_prompt = build_user_prompt(claim["claim"], passages, args.variant, args.max_chars_per_passage)
@@ -99,6 +111,11 @@ def main() -> None:
             )
             validate_llm_verdict(result, passages, args.variant)
             prediction = build_prediction(claim_id, claim.get("label"), result)
+            prediction["evidence_passage_ids"] = (
+                result.selected_passage_ids
+                if args.variant == "rerank_top20_and_classify"
+                else [str(item["passage_id"]) for item in passages]
+            )
             raw_rows.append(
                 {
                     "claim_id": claim_id,
@@ -118,6 +135,24 @@ def main() -> None:
     write_jsonl(predictions, args.output_dir / f"{args.variant}_predictions.jsonl")
     write_jsonl(errors, args.output_dir / f"{args.variant}_errors.jsonl")
     metrics = evaluate_predictions(predictions) if predictions else {"claim_count": 0}
+    coverage_artifacts: dict[str, str] = {}
+    if args.qrels:
+        qrels = {
+            str(row["claim_id"]): [str(value) for value in row.get("relevant_passage_ids") or []]
+            for row in read_jsonl(args.qrels)
+            if row.get("relevant_passage_ids")
+        }
+        coverage = annotate_retrieval_coverage(predictions, rankings, qrels, k=3)
+        coverage_path = args.output_dir / f"{args.variant}_evidence_coverage.jsonl"
+        conditioned_metrics_path = args.output_dir / f"{args.variant}_retrieval_conditioned_metrics.json"
+        write_jsonl(coverage, coverage_path)
+        conditioned_metrics_path.write_text(
+            json.dumps(evaluate_by_retrieval_coverage(predictions, rankings, qrels, k=3), indent=2) + "\n", encoding="utf-8"
+        )
+        coverage_artifacts = {
+            "evidence_coverage": str(coverage_path),
+            "retrieval_conditioned_metrics": str(conditioned_metrics_path),
+        }
     config = {
         "script": "run_llm_baseline",
         "provider": "OpenAI",
@@ -126,11 +161,13 @@ def main() -> None:
         "temperature": args.temperature,
         "candidate_limit": candidate_limit,
         "max_chars_per_passage": args.max_chars_per_passage,
+        "run_name": args.run_name,
         "system_prompt": SYSTEM_PROMPT,
         "successful_claim_count": len(predictions),
         "error_count": len(errors),
         "usage": usage_summary(raw_rows),
         "warning": "LLM reported confidence is not a calibrated probability and is excluded from calibration metrics.",
+        "artifacts": coverage_artifacts,
     }
     (args.output_dir / f"{args.variant}_metrics.json").write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
     (args.output_dir / f"{args.variant}_config.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
@@ -138,7 +175,7 @@ def main() -> None:
         args.output_dir / f"{args.variant}_manifest.json",
         project_root=PROJECT_ROOT,
         config={key: value for key, value in config.items() if key != "system_prompt"},
-        input_paths={"claims": args.claims, "rankings": args.rankings},
+        input_paths={"claims": args.claims, "rankings": args.rankings, **({"qrels": args.qrels} if args.qrels else {})},
     )
     print(json.dumps({**config, **metrics}, indent=2))
 

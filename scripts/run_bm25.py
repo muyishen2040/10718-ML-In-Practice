@@ -15,7 +15,7 @@ from src.data.schema import EvidenceItem  # noqa: E402
 from src.retrieval.bm25 import BM25Retriever  # noqa: E402
 from src.retrieval.metrics import evaluate_rankings  # noqa: E402
 from src.utils.io import iter_jsonl, read_jsonl, write_jsonl  # noqa: E402
-from src.utils.runs import write_run_manifest  # noqa: E402
+from src.utils.runs import resolve_run_directory, write_run_manifest  # noqa: E402
 
 
 def load_corpus(path: Path) -> list[EvidenceItem]:
@@ -89,10 +89,15 @@ def main() -> None:
     parser.add_argument("--corpus", type=Path, help="Defaults to data/processed/averitec/<split>_evidence_corpus.jsonl.")
     parser.add_argument("--qrels", type=Path, help="Defaults to data/processed/averitec/<split>_qrels.jsonl.")
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "outputs" / "bm25")
+    parser.add_argument("--run-name", help="Optional name for an isolated, non-overwriting run subdirectory.")
     parser.add_argument("--k", type=int, default=3, help="Legacy shortcut: use this value for both saved rankings and metrics.")
     parser.add_argument("--ranking-k", type=int, help="Number of passages to save per claim; use 20 for the LLM reranking baseline.")
     parser.add_argument("--metric-k", type=int, help="Rank cutoff for retrieval metrics; normally 3 for the user-facing interface.")
     args = parser.parse_args()
+    try:
+        args.output_dir = resolve_run_directory(args.output_dir, args.run_name)
+    except ValueError as error:
+        parser.error(str(error))
     ranking_k = args.ranking_k if args.ranking_k is not None else args.k
     metric_k = args.metric_k if args.metric_k is not None else args.k
     if ranking_k < 1 or metric_k < 1:
@@ -180,6 +185,7 @@ def main() -> None:
         project_root=PROJECT_ROOT,
         config={
             "script": "run_bm25",
+            "run_name": args.run_name,
             "split": args.split,
             "ranking_k": ranking_k,
             "metric_k": metric_k,

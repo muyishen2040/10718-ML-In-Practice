@@ -38,8 +38,9 @@ This section is the concise source of truth for current progress.
   claim-only, top-three gold-evidence, gold-all oracle, and retrieved-evidence
   modes with standardized verdict, asymmetric-error, and calibration metrics.
 - Frozen protocol configuration, experiment manifests, end-to-end
-  retrieval-coverage diagnostics, baseline-summary generation, and a Colab
-  runbook. The zero-shot OpenAI LLM runner is implemented but not executed.
+  retrieval-coverage diagnostics, per-run output folders, baseline-summary
+  generation, and a Colab runbook. The zero-shot OpenAI LLM runner is
+  implemented but not executed.
 - DisinfoMM English/Snopes filtering, conservative three-class label mapping,
   cited-source manifest generation, and a deterministic 300-claim stratified
   subset for future evidence-aware external evaluation.

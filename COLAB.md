@@ -88,7 +88,8 @@ passage-level recall. The corpus audit reports unresolved annotated URLs.
 ## 5. Run retrieval and classifier baselines
 
 ```python
-!python scripts/run_bm25.py --split dev --data-root "{DATA_ROOT}" --ranking-k 20 --metric-k 3
+!python scripts/run_bm25.py --split dev --data-root "{DATA_ROOT}" --ranking-k 20 --metric-k 3 \
+  --output-dir outputs/bm25 --run-name dev_bm25_top20_v1
 ```
 
 This writes 20 deterministic candidates per claim for the LLM reranking
@@ -128,12 +129,14 @@ same order before calling `build_averitec_passage_corpus.py --split train`:
 ```
 
 ```python
-!python scripts/run_bm25.py --split train --data-root "{DATA_ROOT}" --ranking-k 20 --metric-k 3
+!python scripts/run_bm25.py --split train --data-root "{DATA_ROOT}" --ranking-k 20 --metric-k 3 \
+  --output-dir outputs/bm25 --run-name train_bm25_top20_v1
 
 !python scripts/train_tfidf_logreg.py --evidence-mode retrieved \
   --data-root "{DATA_ROOT}" \
-  --train-rankings outputs/bm25/train_rankings.jsonl \
-  --eval-rankings outputs/bm25/dev_rankings.jsonl
+  --train-rankings outputs/bm25/train_bm25_top20_v1/train_rankings.jsonl \
+  --eval-rankings outputs/bm25/dev_bm25_top20_v1/dev_rankings.jsonl \
+  --output-dir outputs/tfidf_logreg --run-name retrieved_train_to_dev_v1
 ```
 
 The claim-only and gold modes are diagnostics. `gold` is capped at three
@@ -155,19 +158,35 @@ Start with a small cost-controlled pilot and record an exact model identifier:
 ```python
 !python scripts/run_llm_baseline.py \
   --claims "{DATA_ROOT}/processed/averitec/dev.jsonl" \
-  --rankings outputs/bm25/dev_rankings.jsonl \
-  --model YOUR_EXACT_MODEL_ID --variant classify_top3 --max-claims 20
+  --rankings outputs/bm25/dev_bm25_top20_v1/dev_rankings.jsonl \
+  --qrels "{DATA_ROOT}/processed/averitec/dev_qrels.jsonl" \
+  --model YOUR_EXACT_MODEL_ID --variant classify_top3 --max-claims 20 \
+  --output-dir outputs/llm --run-name dev_llm_top3_v1
 ```
 
-After inspecting cached raw outputs, rerun without `--max-claims`. The second
-variant uses BM25 top 20, asks the LLM to select exactly three passages, then
-predicts the verdict:
+After verifying the API integration without changing the frozen prompt, rerun
+the same named folder without `--max-claims`; successful pilot calls are
+reused from its cache:
 
 ```python
 !python scripts/run_llm_baseline.py \
   --claims "{DATA_ROOT}/processed/averitec/dev.jsonl" \
-  --rankings outputs/bm25/dev_rankings.jsonl \
-  --model YOUR_EXACT_MODEL_ID --variant rerank_top20_and_classify
+  --rankings outputs/bm25/dev_bm25_top20_v1/dev_rankings.jsonl \
+  --qrels "{DATA_ROOT}/processed/averitec/dev_qrels.jsonl" \
+  --model YOUR_EXACT_MODEL_ID --variant classify_top3 \
+  --output-dir outputs/llm --run-name dev_llm_top3_v1
+```
+
+The stronger second variant uses BM25 top 20, asks the LLM to select exactly
+three passages, then predicts the verdict:
+
+```python
+!python scripts/run_llm_baseline.py \
+  --claims "{DATA_ROOT}/processed/averitec/dev.jsonl" \
+  --rankings outputs/bm25/dev_bm25_top20_v1/dev_rankings.jsonl \
+  --qrels "{DATA_ROOT}/processed/averitec/dev_qrels.jsonl" \
+  --model YOUR_EXACT_MODEL_ID --variant rerank_top20_and_classify \
+  --output-dir outputs/llm --run-name dev_llm_rerank_top20_v1
 ```
 
 The runner stores the exact prompt, structured raw response, token usage,
@@ -178,7 +197,24 @@ self-reported confidence as calibrated probabilities.
 
 ```python
 !python scripts/generate_baseline_report.py \
-  --run "claim_only=outputs/tfidf_logreg/claim_only_train_to_dev_metrics.json,outputs/tfidf_logreg/claim_only_train_to_dev_config.json" \
-  --run "bm25=outputs/bm25/dev_metrics.json" \
+  --run "bm25=outputs/bm25/dev_bm25_top20_v1/dev_metrics.json" \
+  --run "llm_rerank=outputs/llm/dev_llm_rerank_top20_v1/rerank_top20_and_classify_metrics.json,outputs/llm/dev_llm_rerank_top20_v1/rerank_top20_and_classify_config.json" \
   --output-dir outputs/reports
 ```
+
+## 8. Files to share for result analysis
+
+Each `--run-name` creates a separate directory. Download or send the relevant
+run directory (not the data archive). In particular, include the following:
+
+- BM25: `*_metrics.json`, `*_rankings.jsonl`, and `*_manifest.json`.
+- TF-IDF/logistic regression: `*_metrics.json`, `*_predictions.jsonl`,
+  `*_config.json`, `*_manifest.json`, `*_evidence_coverage.jsonl`, and
+  `*_retrieval_conditioned_metrics.json`.
+- LLM: the same prediction/metric/config/manifest files plus `*_errors.jsonl`;
+  include `*_raw.jsonl` only if you are comfortable sharing the model outputs.
+
+The coverage file labels each claim as `evidence_covered`, `evidence_missed`,
+or `unjudged`. The conditioned metrics compare verdict quality for the first
+two groups; treat the comparison as a diagnostic, not proof that retrieval
+caused every classification outcome.

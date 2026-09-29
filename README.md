@@ -91,6 +91,17 @@ and follow [COLAB.md](COLAB.md). The runner requires an exact model ID and
 stores the frozen prompt, selected evidence IDs, raw structured response, token
 usage, and errors for reproducibility.
 
+## Preserve each run for review
+
+The BM25, TF-IDF/logistic-regression, and LLM runners accept `--run-name`.
+Use a new descriptive name for each frozen experiment, such as
+`dev_bm25_top20_v1`; this creates a separate child directory under
+`--output-dir` rather than replacing another experiment's files. Each baseline
+run saves predictions, metrics, configuration, and a manifest. Evidence-aware
+verifiers additionally save `*_evidence_coverage.jsonl` and
+`*_retrieval_conditioned_metrics.json`, which separate verdict performance
+when an annotated source was covered from performance when it was missed.
+
 ## Prepare the external Snopes records
 
 This creates a clean, three-class DisinfoMM/Snopes claim set and preserves its

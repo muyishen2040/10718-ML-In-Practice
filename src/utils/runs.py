@@ -5,11 +5,15 @@ from __future__ import annotations
 import hashlib
 import json
 import platform
+import re
 import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+
+_RUN_NAME_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
 
 def sha256_file(path: str | Path) -> str:
@@ -27,6 +31,16 @@ def git_commit(project_root: Path) -> str | None:
         ).strip()
     except (OSError, subprocess.CalledProcessError):
         return None
+
+
+def resolve_run_directory(base_directory: str | Path, run_name: str | None) -> Path:
+    """Return a stable output directory and reject path-like run identifiers."""
+    base = Path(base_directory)
+    if not run_name:
+        return base
+    if not _RUN_NAME_PATTERN.fullmatch(run_name):
+        raise ValueError("run_name must use only letters, numbers, dots, underscores, or hyphens")
+    return base / run_name
 
 
 def write_run_manifest(

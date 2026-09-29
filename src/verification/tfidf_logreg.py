@@ -104,16 +104,21 @@ class TfidfLogRegVerifier:
         class_order = list(self.pipeline.named_steps["logreg"].classes_)
         output = []
         for record, label, row_probabilities in zip(materialized, predicted, probabilities, strict=True):
-            output.append(
-                {
-                    "claim_id": record["claim_id"],
-                    "true_label": record.get("label"),
-                    "predicted_label": str(label),
-                    "probabilities": {
-                        class_label: float(probability)
-                        for class_label, probability in zip(class_order, row_probabilities, strict=True)
-                    },
-                    "evidence_item_count": len(evidence_texts(record, self.evidence_mode, self.max_evidence)),
-                }
-            )
+            prediction = {
+                "claim_id": record["claim_id"],
+                "true_label": record.get("label"),
+                "predicted_label": str(label),
+                "probabilities": {
+                    class_label: float(probability)
+                    for class_label, probability in zip(class_order, row_probabilities, strict=True)
+                },
+                "evidence_item_count": len(evidence_texts(record, self.evidence_mode, self.max_evidence)),
+            }
+            if self.evidence_mode == "retrieved":
+                prediction["evidence_passage_ids"] = [
+                    str(item["passage_id"])
+                    for item in (record.get("retrieved_evidence") or [])[: self.max_evidence]
+                    if isinstance(item, dict) and item.get("passage_id")
+                ]
+            output.append(prediction)
         return output
