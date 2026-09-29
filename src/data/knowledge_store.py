@@ -11,6 +11,8 @@ from collections import Counter
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from src.utils.progress import progress
+
 
 URL_KEYS = ("url", "source_url", "document_url")
 TEXT_KEYS = ("text", "scraped_text", "content", "lines", "document", "body")
@@ -24,37 +26,40 @@ def inspect_zip_archive(path: str | Path, sample_members: int = 10) -> dict[str,
         members = [member for member in archive.infolist() if not member.is_dir()]
         suffix_counts = Counter(PurePosixPath(member.filename).suffix.casefold() or "[no extension]" for member in members)
         samples = []
-        for member in members[:sample_members]:
-            sample: dict[str, Any] = {"name": member.filename, "compressed_size": member.compress_size, "file_size": member.file_size}
-            suffix = PurePosixPath(member.filename).suffix.casefold()
-            if suffix in {".json", ".jsonl"} and member.file_size <= 2_000_000:
-                with archive.open(member) as handle:
-                    text = handle.read().decode("utf-8", errors="replace")
-                try:
-                    parsed = json.loads(text) if suffix == ".json" else json.loads(next(line for line in text.splitlines() if line.strip()))
-                except json.JSONDecodeError:
-                    # Official AVeriTeC stores JSONL rows in files named
-                    # `N.json`; show the first row shape instead of calling it
-                    # an opaque parse failure in the inspection report.
+        inspected_members = members[:sample_members]
+        with progress(total=len(inspected_members), description="Inspecting archive", unit="file") as bar:
+            for member in inspected_members:
+                sample: dict[str, Any] = {"name": member.filename, "compressed_size": member.compress_size, "file_size": member.file_size}
+                suffix = PurePosixPath(member.filename).suffix.casefold()
+                if suffix in {".json", ".jsonl"} and member.file_size <= 2_000_000:
+                    with archive.open(member) as handle:
+                        text = handle.read().decode("utf-8", errors="replace")
                     try:
-                        parsed = json.loads(next(line for line in text.splitlines() if line.strip()))
-                        sample["jsonl_with_json_suffix"] = suffix == ".json"
-                    except (json.JSONDecodeError, StopIteration):
+                        parsed = json.loads(text) if suffix == ".json" else json.loads(next(line for line in text.splitlines() if line.strip()))
+                    except json.JSONDecodeError:
+                        # Official AVeriTeC stores JSONL rows in files named
+                        # `N.json`; show the first row shape instead of calling it
+                        # an opaque parse failure in the inspection report.
+                        try:
+                            parsed = json.loads(next(line for line in text.splitlines() if line.strip()))
+                            sample["jsonl_with_json_suffix"] = suffix == ".json"
+                        except (json.JSONDecodeError, StopIteration):
+                            sample["json_parse_error"] = True
+                            parsed = None
+                    except StopIteration:
                         sample["json_parse_error"] = True
                         parsed = None
-                except StopIteration:
-                    sample["json_parse_error"] = True
-                    parsed = None
-                if parsed is not None:
-                    sample["json_type"] = type(parsed).__name__
-                    if isinstance(parsed, dict):
-                        sample["json_keys"] = sorted(parsed)[:30]
-                    elif isinstance(parsed, list) and parsed and isinstance(parsed[0], dict):
-                        sample["first_row_keys"] = sorted(parsed[0])[:30]
-            elif suffix in {".tsv", ".csv"} and member.file_size <= 2_000_000:
-                with archive.open(member) as handle:
-                    sample["header"] = handle.readline().decode("utf-8", errors="replace").strip()
-            samples.append(sample)
+                    if parsed is not None:
+                        sample["json_type"] = type(parsed).__name__
+                        if isinstance(parsed, dict):
+                            sample["json_keys"] = sorted(parsed)[:30]
+                        elif isinstance(parsed, list) and parsed and isinstance(parsed[0], dict):
+                            sample["first_row_keys"] = sorted(parsed[0])[:30]
+                elif suffix in {".tsv", ".csv"} and member.file_size <= 2_000_000:
+                    with archive.open(member) as handle:
+                        sample["header"] = handle.readline().decode("utf-8", errors="replace").strip()
+                samples.append(sample)
+                bar.update(1)
     return {
         "archive": str(archive_path),
         "archive_size_bytes": archive_path.stat().st_size,
@@ -196,61 +201,63 @@ def normalize_zip_to_jsonl(
     stopped_early = False
 
     with zipfile.ZipFile(source) as archive, destination.open("w", encoding="utf-8", newline="\n") as output:
-        for member in archive.infolist():
-            if member.is_dir():
-                continue
-            suffix = PurePosixPath(member.filename).suffix.casefold()
-            audit["member_counts"][suffix or "[no extension]"] += 1
-            recognized_member = False
-            try:
-                with archive.open(member) as binary_handle:
-                    text_handle = io.TextIOWrapper(binary_handle, encoding="utf-8", errors="replace")
-                    if suffix == ".json":
-                        # AVeriTeC calls its per-claim JSONL files `.json`.
-                        # Try ordinary JSON first, then safely fall back to one
-                        # JSON object per line without treating an invalid file
-                        # as a generic format.
-                        content = text_handle.read()
-                        try:
-                            parsed_rows = _documents_from_value(json.loads(content), member.filename)
-                            row_iterator = iter(parsed_rows)
-                        except json.JSONDecodeError:
-                            def json_rows_with_json_suffix() -> Any:
-                                for index, line in enumerate(content.splitlines()):
+        members = [member for member in archive.infolist() if not member.is_dir()]
+        with progress(total=len(members), description="Normalizing archive", unit="file") as bar:
+            for member in members:
+                suffix = PurePosixPath(member.filename).suffix.casefold()
+                audit["member_counts"][suffix or "[no extension]"] += 1
+                recognized_member = False
+                try:
+                    with archive.open(member) as binary_handle:
+                        text_handle = io.TextIOWrapper(binary_handle, encoding="utf-8", errors="replace")
+                        if suffix == ".json":
+                            # AVeriTeC calls its per-claim JSONL files `.json`.
+                            # Try ordinary JSON first, then safely fall back to one
+                            # JSON object per line without treating an invalid file
+                            # as a generic format.
+                            content = text_handle.read()
+                            try:
+                                parsed_rows = _documents_from_value(json.loads(content), member.filename)
+                                row_iterator = iter(parsed_rows)
+                            except json.JSONDecodeError:
+                                def json_rows_with_json_suffix() -> Any:
+                                    for index, line in enumerate(content.splitlines()):
+                                        if line.strip():
+                                            yield from _documents_from_value(json.loads(line), f"{member.filename}#{index}")
+                                row_iterator = json_rows_with_json_suffix()
+                        elif suffix == ".jsonl":
+                            def jsonl_rows() -> Any:
+                                for index, line in enumerate(text_handle):
                                     if line.strip():
                                         yield from _documents_from_value(json.loads(line), f"{member.filename}#{index}")
-                            row_iterator = json_rows_with_json_suffix()
-                    elif suffix == ".jsonl":
-                        def jsonl_rows() -> Any:
-                            for index, line in enumerate(text_handle):
-                                if line.strip():
-                                    yield from _documents_from_value(json.loads(line), f"{member.filename}#{index}")
-                        row_iterator = jsonl_rows()
-                    elif suffix in {".tsv", ".csv"}:
-                        delimiter = "\t" if suffix == ".tsv" else ","
-                        reader = csv.DictReader(text_handle, delimiter=delimiter)
-                        def tabular_rows() -> Any:
-                            for index, row in enumerate(reader):
-                                yield from _documents_from_value(row, f"{member.filename}#{index}")
-                        row_iterator = tabular_rows()
-                    else:
-                        row_iterator = iter(())
-                    for document in row_iterator:
-                        output.write(json.dumps(document, ensure_ascii=False) + "\n")
-                        normalized_document_count += 1
-                        recognized_member = True
-                        if max_documents is not None and normalized_document_count >= max_documents:
-                            stopped_early = True
-                            break
-                if recognized_member:
-                    audit["recognized_member_counts"][suffix] += 1
-                elif len(audit["skipped_member_samples"]) < 20:
-                    audit["skipped_member_samples"].append(member.filename)
-            except (json.JSONDecodeError, UnicodeError, csv.Error) as error:
-                if len(audit["skipped_member_samples"]) < 20:
-                    audit["skipped_member_samples"].append(f"{member.filename} ({type(error).__name__})")
-            if stopped_early:
-                break
+                            row_iterator = jsonl_rows()
+                        elif suffix in {".tsv", ".csv"}:
+                            delimiter = "\t" if suffix == ".tsv" else ","
+                            reader = csv.DictReader(text_handle, delimiter=delimiter)
+                            def tabular_rows() -> Any:
+                                for index, row in enumerate(reader):
+                                    yield from _documents_from_value(row, f"{member.filename}#{index}")
+                            row_iterator = tabular_rows()
+                        else:
+                            row_iterator = iter(())
+                        for document in row_iterator:
+                            output.write(json.dumps(document, ensure_ascii=False) + "\n")
+                            normalized_document_count += 1
+                            recognized_member = True
+                            if max_documents is not None and normalized_document_count >= max_documents:
+                                stopped_early = True
+                                break
+                    if recognized_member:
+                        audit["recognized_member_counts"][suffix] += 1
+                    elif len(audit["skipped_member_samples"]) < 20:
+                        audit["skipped_member_samples"].append(member.filename)
+                except (json.JSONDecodeError, UnicodeError, csv.Error) as error:
+                    if len(audit["skipped_member_samples"]) < 20:
+                        audit["skipped_member_samples"].append(f"{member.filename} ({type(error).__name__})")
+                bar.update(1)
+                bar.set_postfix(documents=normalized_document_count)
+                if stopped_early:
+                    break
 
     audit["member_counts"] = dict(sorted(audit["member_counts"].items()))
     audit["recognized_member_counts"] = dict(sorted(audit["recognized_member_counts"].items()))
