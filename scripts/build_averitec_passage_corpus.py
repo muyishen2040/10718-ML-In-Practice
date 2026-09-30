@@ -17,7 +17,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data.corpus import build_url_qrels, chunk_text  # noqa: E402
-from src.utils.io import iter_jsonl, read_jsonl, write_jsonl  # noqa: E402
+from src.utils.io import read_jsonl, write_jsonl  # noqa: E402
+from src.utils.progress import progress  # noqa: E402
 from src.utils.runs import write_run_manifest  # noqa: E402
 
 
@@ -46,8 +47,21 @@ def main() -> None:
     unmatched_candidate_claim_document_count = 0
     candidate_pool_scoped = False
     passage_count = 0
-    with corpus_path.open("w", encoding="utf-8", newline="\n") as output:
-        for document_index, document in enumerate(iter_jsonl(args.documents_jsonl)):
+    with (
+        args.documents_jsonl.open("rb") as documents,
+        corpus_path.open("w", encoding="utf-8", newline="\n") as output,
+        progress(
+            total=args.documents_jsonl.stat().st_size,
+            description="Building passage corpus",
+            unit="B",
+            unit_scale=True,
+        ) as bar,
+    ):
+        for document_index, line in enumerate(documents):
+            bar.update(len(line))
+            if not line.strip():
+                continue
+            document = json.loads(line)
             document_count += 1
             text = str(document.get("text") or "").strip()
             if not text:
@@ -85,6 +99,8 @@ def main() -> None:
                     + "\n"
                 )
                 passage_count += 1
+            if document_count % 1_000 == 0:
+                bar.set_postfix(documents=document_count, passages=passage_count)
     corpus_audit = {
         "document_count": document_count,
         "passage_count": passage_count,
@@ -93,7 +109,19 @@ def main() -> None:
         "candidate_pool_scoped": candidate_pool_scoped,
         "streamed": True,
     }
-    qrels, qrels_audit = build_url_qrels(claims, iter_jsonl(corpus_path))
+    def passages_with_progress():
+        with corpus_path.open("rb") as passages, progress(
+            total=corpus_path.stat().st_size,
+            description="Building URL qrels",
+            unit="B",
+            unit_scale=True,
+        ) as bar:
+            for line in passages:
+                bar.update(len(line))
+                if line.strip():
+                    yield json.loads(line)
+
+    qrels, qrels_audit = build_url_qrels(claims, passages_with_progress())
     write_jsonl(qrels, qrels_path)
     report: dict[str, Any] = {
         "split": args.split,
