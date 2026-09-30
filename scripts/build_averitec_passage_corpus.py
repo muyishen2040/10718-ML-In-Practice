@@ -10,13 +10,14 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.data.corpus import build_url_qrels, chunk_text  # noqa: E402
+from src.data.corpus import canonical_url, chunk_text  # noqa: E402
 from src.utils.io import read_jsonl, write_jsonl  # noqa: E402
 from src.utils.progress import progress  # noqa: E402
 from src.utils.runs import write_run_manifest  # noqa: E402
@@ -39,6 +40,20 @@ def main() -> None:
         for record in claims
         if record.get("metadata", {}).get("source_index") is not None
     }
+    gold_urls_by_claim = {
+        str(record["claim_id"]): {
+            canonical_url(url)
+            for url in record.get("source_urls") or []
+            if canonical_url(url) is not None
+        }
+        for record in claims
+    }
+    claim_ids_by_gold_url: dict[str, set[str]] = defaultdict(set)
+    for claim_id, gold_urls in gold_urls_by_claim.items():
+        for gold_url in gold_urls:
+            claim_ids_by_gold_url[str(gold_url)].add(claim_id)
+    relevant_passage_ids_by_claim: dict[str, list[str]] = defaultdict(list)
+    matched_urls_by_claim: dict[str, set[str]] = defaultdict(set)
     corpus_path = processed / f"{args.split}_evidence_corpus.jsonl"
     qrels_path = processed / f"{args.split}_qrels.jsonl"
     corpus_path.parent.mkdir(parents=True, exist_ok=True)
@@ -52,7 +67,7 @@ def main() -> None:
         corpus_path.open("w", encoding="utf-8", newline="\n") as output,
         progress(
             total=args.documents_jsonl.stat().st_size,
-            description="Building passage corpus",
+            description="Building corpus and qrels",
             unit="B",
             unit_scale=True,
         ) as bar,
@@ -80,10 +95,11 @@ def main() -> None:
                 unmatched_candidate_claim_document_count += 1
                 continue
             for passage_index, passage_text in enumerate(chunk_text(text, args.max_words, args.overlap_words)):
+                passage_id = f"{document_id}:p{passage_index:04d}"
                 output.write(
                     json.dumps(
                         {
-                            "passage_id": f"{document_id}:p{passage_index:04d}",
+                            "passage_id": passage_id,
                             "text": passage_text,
                             "url": url,
                             "metadata": {
@@ -99,6 +115,16 @@ def main() -> None:
                     + "\n"
                 )
                 passage_count += 1
+                normalized_url = canonical_url(url)
+                target_claim_ids = (
+                    {candidate_claim_id}
+                    if candidate_claim_id is not None
+                    else claim_ids_by_gold_url.get(str(normalized_url), set())
+                )
+                for target_claim_id in target_claim_ids:
+                    if normalized_url in gold_urls_by_claim.get(target_claim_id, set()):
+                        relevant_passage_ids_by_claim[target_claim_id].append(passage_id)
+                        matched_urls_by_claim[target_claim_id].add(str(normalized_url))
             if document_count % 1_000 == 0:
                 bar.set_postfix(documents=document_count, passages=passage_count)
     corpus_audit = {
@@ -109,19 +135,32 @@ def main() -> None:
         "candidate_pool_scoped": candidate_pool_scoped,
         "streamed": True,
     }
-    def passages_with_progress():
-        with corpus_path.open("rb") as passages, progress(
-            total=corpus_path.stat().st_size,
-            description="Building URL qrels",
-            unit="B",
-            unit_scale=True,
-        ) as bar:
-            for line in passages:
-                bar.update(len(line))
-                if line.strip():
-                    yield json.loads(line)
-
-    qrels, qrels_audit = build_url_qrels(claims, passages_with_progress())
+    qrels = []
+    unresolved_url_count = 0
+    for claim in claims:
+        claim_id = str(claim["claim_id"])
+        gold_urls = gold_urls_by_claim[claim_id]
+        unresolved_urls = sorted(gold_urls - matched_urls_by_claim[claim_id])
+        unresolved_url_count += len(unresolved_urls)
+        qrels.append(
+            {
+                "claim_id": claim_id,
+                "relevant_passage_ids": sorted(set(relevant_passage_ids_by_claim[claim_id])),
+                "judgment_type": "annotated_source_url_proxy",
+                "annotated_source_url_count": len(gold_urls),
+                "unresolved_source_urls": unresolved_urls,
+            }
+        )
+    qrels_audit = {
+        "judgment_type": "annotated_source_url_proxy",
+        "claim_count": len(qrels),
+        "judged_claim_count": sum(bool(row["relevant_passage_ids"]) for row in qrels),
+        "unresolved_annotated_source_url_count": unresolved_url_count,
+        "relevant_passage_count_distribution": dict(
+            sorted(Counter(len(row["relevant_passage_ids"]) for row in qrels).items())
+        ),
+        "built_while_writing_corpus": True,
+    }
     write_jsonl(qrels, qrels_path)
     report: dict[str, Any] = {
         "split": args.split,
