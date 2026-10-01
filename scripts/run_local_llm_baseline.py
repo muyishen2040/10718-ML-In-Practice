@@ -71,8 +71,44 @@ def parse_json_verdict(response_text: str) -> LLMVerdict:
         except json.JSONDecodeError:
             continue
         if isinstance(value, dict):
-            return LLMVerdict.model_validate(value)
+            return LLMVerdict.model_validate(normalize_local_verdict_fields(value))
     raise ValueError("Local model did not return a valid JSON verdict object")
+
+
+def normalize_local_verdict_fields(value: dict[str, Any]) -> dict[str, Any]:
+    """Accept common local-model JSON aliases while retaining the canonical artifact schema.
+
+    This is deliberately limited to field-name and scalar/list normalization; it
+    never infers a label, evidence ID, confidence, or rationale that the model
+    did not supply.
+    """
+    normalized = dict(value)
+    aliases = {
+        "label": ("verdict", "verdict_label", "prediction"),
+        "selected_passage_ids": ("selected_passages", "selected_evidence_ids", "evidence_passage_ids", "evidence_ids", "evidence", "passages"),
+        "reported_confidence": ("confidence", "score"),
+        "brief_rationale": ("rationale", "reason", "reasoning", "explanation"),
+    }
+    for canonical, alternatives in aliases.items():
+        if canonical not in normalized:
+            for alternative in alternatives:
+                if alternative in normalized:
+                    normalized[canonical] = normalized[alternative]
+                    break
+    selected = normalized.get("selected_passage_ids")
+    if isinstance(selected, str):
+        normalized["selected_passage_ids"] = [selected]
+    elif isinstance(selected, list) and all(isinstance(item, dict) for item in selected):
+        passage_ids = []
+        for item in selected:
+            for key in ("passage_id", "id", "citation"):
+                if key in item:
+                    passage_ids.append(item[key])
+                    break
+            else:
+                passage_ids.append(item)
+        normalized["selected_passage_ids"] = passage_ids
+    return normalized
 
 
 def load_local_model(model_name: str):

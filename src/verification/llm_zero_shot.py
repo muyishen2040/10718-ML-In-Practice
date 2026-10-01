@@ -31,7 +31,9 @@ truth, or information that is absent from the passages. Return one label:
 
 Select the passage IDs that most directly support your decision. Your reported
 confidence is a self-assessment, not a probability. Return the required JSON
-object only."""
+object only, with exactly these keys:
+{"label": "one of the four labels", "selected_passage_ids": ["passage ID"],
+ "reported_confidence": 0.0, "brief_rationale": "one brief explanation"}."""
 
 
 def build_user_prompt(claim: str, passages: list[dict[str, Any]], variant: LLMVariant, max_chars_per_passage: int = 1200) -> str:
