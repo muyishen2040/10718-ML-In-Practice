@@ -15,6 +15,7 @@ from src.data.schema import EvidenceItem  # noqa: E402
 from src.retrieval.bm25 import BM25Retriever  # noqa: E402
 from src.retrieval.metrics import evaluate_rankings  # noqa: E402
 from src.utils.io import iter_jsonl, read_jsonl, write_jsonl  # noqa: E402
+from src.utils.progress import progress  # noqa: E402
 from src.utils.runs import resolve_run_directory, write_run_manifest  # noqa: E402
 
 
@@ -115,15 +116,17 @@ def main() -> None:
     if candidate_pool_scoped:
         claim_by_id = {str(claim["claim_id"]): claim for claim in claims}
         retrieved_by_claim_id: dict[str, list[dict[str, Any]]] = {}
-        for candidate_claim_id, candidate_items in per_claim_candidate_groups(corpus_path):
-            corpus_passage_count += len(candidate_items)
-            claim = claim_by_id.get(candidate_claim_id)
-            if claim is None:
-                continue
-            retriever = BM25Retriever(candidate_items)
-            retrieved_by_claim_id[candidate_claim_id] = [
-                item.to_dict() for item in retriever.retrieve(str(claim["claim"]), k=ranking_k)
-            ]
+        with progress(total=len(claims), description="Running BM25", unit="claim") as bar:
+            for candidate_claim_id, candidate_items in per_claim_candidate_groups(corpus_path):
+                corpus_passage_count += len(candidate_items)
+                claim = claim_by_id.get(candidate_claim_id)
+                if claim is None:
+                    continue
+                retriever = BM25Retriever(candidate_items)
+                retrieved_by_claim_id[candidate_claim_id] = [
+                    item.to_dict() for item in retriever.retrieve(str(claim["claim"]), k=ranking_k)
+                ]
+                bar.update(1)
         rankings = []
         for claim in claims:
             claim_id = str(claim["claim_id"])
@@ -136,14 +139,19 @@ def main() -> None:
         corpus = load_corpus(corpus_path)
         corpus_passage_count = len(corpus)
         retriever = BM25Retriever(corpus)
-        rankings = [
-            {
-                "claim_id": claim["claim_id"],
-                "claim": claim["claim"],
-                "retrieved": [item.to_dict() for item in retriever.retrieve(str(claim["claim"]), k=ranking_k)],
-            }
-            for claim in claims
-        ]
+        rankings = []
+        with progress(total=len(claims), description="Running BM25", unit="claim") as bar:
+            for claim in claims:
+                rankings.append(
+                    {
+                        "claim_id": claim["claim_id"],
+                        "claim": claim["claim"],
+                        "retrieved": [
+                            item.to_dict() for item in retriever.retrieve(str(claim["claim"]), k=ranking_k)
+                        ],
+                    }
+                )
+                bar.update(1)
         retrieval_scope = "global_static_corpus"
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
