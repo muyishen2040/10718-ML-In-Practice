@@ -21,6 +21,14 @@ class LLMVerdict(BaseModel):
     brief_rationale: str = Field(min_length=1, max_length=600)
 
 
+class ClaimOnlyLLMVerdict(BaseModel):
+    """Required response when the model receives no evidence passages."""
+
+    label: Literal["Supported", "Refuted", "Not Enough Evidence", "Conflicting Evidence"]
+    reported_confidence: float = Field(ge=0.0, le=1.0)
+    brief_rationale: str = Field(min_length=1, max_length=600)
+
+
 SYSTEM_PROMPT = """You are an evidence-grounded claim-verification baseline.
 Use only the supplied passages. Do not use outside knowledge, the claim's likely
 truth, or information that is absent from the passages. Return one label:
@@ -36,7 +44,26 @@ object only, with exactly these keys:
  "reported_confidence": 0.0, "brief_rationale": "one brief explanation"}."""
 
 
-def build_user_prompt(claim: str, passages: list[dict[str, Any]], variant: LLMVariant, max_chars_per_passage: int = 1200) -> str:
+CLAIM_ONLY_SYSTEM_PROMPT = """You are a claim-only claim-verification baseline.
+You receive a claim but no evidence passages. Do not imply that you retrieved,
+read, or verified external evidence. Return one label:
+- Supported
+- Refuted
+- Not Enough Evidence
+- Conflicting Evidence
+
+Return the required JSON object only, with exactly these keys:
+{"label": "one of the four labels", "reported_confidence": 0.0,
+ "brief_rationale": "one brief explanation"}."""
+
+
+def build_user_prompt(
+    claim: str,
+    passages: list[dict[str, Any]],
+    variant: LLMVariant,
+    max_chars_per_passage: int = 1200,
+    evidence_description: str = "retrieved passages",
+) -> str:
     """Build the frozen evidence-only request for one claim."""
     expected = min(3, len(passages))
     if expected < 1:
@@ -44,7 +71,7 @@ def build_user_prompt(claim: str, passages: list[dict[str, Any]], variant: LLMVa
     instructions = (
         f"Rerank the {len(passages)} candidate passages and select exactly {expected} passage IDs before classifying."
         if variant == "rerank_top20_and_classify"
-        else f"Classify using these top {len(passages)} retrieved passages and select 1 to {expected} relevant IDs."
+        else f"Classify using these {len(passages)} {evidence_description} and select 1 to {expected} relevant IDs."
     )
     rendered_passages = []
     for index, passage in enumerate(passages, start=1):
@@ -52,6 +79,11 @@ def build_user_prompt(claim: str, passages: list[dict[str, Any]], variant: LLMVa
         text = str(passage.get("text") or "").strip()[:max_chars_per_passage]
         rendered_passages.append(f"[PASSAGE {index} | ID={passage_id}]\n{text}")
     return f"{instructions}\n\n[CLAIM]\n{claim.strip()}\n\n" + "\n\n".join(rendered_passages)
+
+
+def build_claim_only_prompt(claim: str) -> str:
+    """Build the frozen no-evidence request used by the claim-only diagnostic."""
+    return f"Classify this claim without evidence passages.\n\n[CLAIM]\n{claim.strip()}"
 
 
 def prompt_sha256(system_prompt: str, user_prompt: str) -> str:
@@ -96,7 +128,7 @@ def call_openai_structured(
     return message.parsed, completion.model_dump(mode="json")
 
 
-def build_prediction(claim_id: str, true_label: str | None, result: LLMVerdict) -> dict[str, Any]:
+def build_prediction(claim_id: str, true_label: str | None, result: LLMVerdict | ClaimOnlyLLMVerdict) -> dict[str, Any]:
     if result.label not in CANONICAL_LABELS:
         raise ValueError(f"Invalid LLM label: {result.label}")
     return {
@@ -104,7 +136,7 @@ def build_prediction(claim_id: str, true_label: str | None, result: LLMVerdict) 
         "true_label": true_label,
         "predicted_label": result.label,
         "probabilities": None,
-        "selected_passage_ids": result.selected_passage_ids,
+        "selected_passage_ids": getattr(result, "selected_passage_ids", []),
         "reported_confidence": result.reported_confidence,
         "brief_rationale": result.brief_rationale,
     }

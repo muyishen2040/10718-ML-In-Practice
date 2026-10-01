@@ -180,6 +180,44 @@ run name. The configuration records the model ID, resolved model revision,
 prompt hash, 4-bit inference mode, disabled thinking mode, and generation
 settings. Keep the same model, prompt, and settings for the full run.
 
+The same local runner supports all three verifier comparisons. Use a distinct
+run name for each mode. All runs retain one completed claim at a time and can
+therefore be restarted with the exact same command after a Colab interruption.
+
+**1. Claim-only diagnostic (no evidence):**
+
+```python
+!python scripts/run_local_llm_baseline.py \
+  --claims "{DATA_ROOT}/processed/averitec/dev.jsonl" \
+  --model Qwen/Qwen3-4B --evidence-mode claim_only --max-claims 20 \
+  --output-dir outputs/local_llm --run-name dev_qwen3_4b_claim_only_v1
+```
+
+**2. Primary end-to-end LLM baseline (BM25 top 3):**
+
+```python
+!python scripts/run_local_llm_baseline.py \
+  --claims "{DATA_ROOT}/processed/averitec/dev.jsonl" \
+  --rankings outputs/bm25/dev_bm25_top20_v1/dev_rankings.jsonl \
+  --qrels "{DATA_ROOT}/processed/averitec/dev_qrels.jsonl" \
+  --model Qwen/Qwen3-4B --evidence-mode bm25_top3 --max-claims 20 \
+  --output-dir outputs/local_llm --run-name dev_qwen3_4b_top3_v1
+```
+
+**3. Gold-evidence oracle diagnostic:**
+
+```python
+!python scripts/run_local_llm_baseline.py \
+  --claims "{DATA_ROOT}/processed/averitec/dev.jsonl" \
+  --model Qwen/Qwen3-4B --evidence-mode gold_top3 --max-evidence 3 --max-claims 20 \
+  --output-dir outputs/local_llm --run-name dev_qwen3_4b_gold_top3_v1
+```
+
+`gold_top3` gives Qwen up to three human-annotated answers and is an oracle
+verifier diagnostic only. It is **not** an end-to-end or deployable result;
+compare it with BM25 top-3 to estimate the cost of retrieval misses. Claims
+without annotated answers are excluded and counted in that run's configuration.
+
 ### Hosted API alternative
 
 Use a Colab secret or `getpass`; never place the key in a notebook cell that is

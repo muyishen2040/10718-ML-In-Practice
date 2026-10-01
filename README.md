@@ -88,9 +88,10 @@ not comparable to the user-facing top-three-evidence setting.
 
 For Colab GPU, the recommended runner is the 4-bit local Qwen3 baseline in
 [COLAB.md](COLAB.md). It caches one completed claim at a time so an interrupted
-GPU session can resume. The hosted OpenAI runner remains available as an
-alternative; it requires `requirements-colab.txt` and `OPENAI_API_KEY` outside
-the repository.
+GPU session can resume. It supports the primary BM25-top-3 run plus clearly
+labeled claim-only and capped gold-evidence diagnostics. The hosted OpenAI
+runner remains available as an alternative; it requires `requirements-colab.txt`
+and `OPENAI_API_KEY` outside the repository.
 
 ## Preserve each run for review
 

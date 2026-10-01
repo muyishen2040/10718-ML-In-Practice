@@ -24,8 +24,11 @@ from src.utils.io import read_jsonl, write_jsonl  # noqa: E402
 from src.utils.progress import progress  # noqa: E402
 from src.utils.runs import resolve_run_directory, write_run_manifest  # noqa: E402
 from src.verification.llm_zero_shot import (  # noqa: E402
+    CLAIM_ONLY_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
+    ClaimOnlyLLMVerdict,
     LLMVerdict,
+    build_claim_only_prompt,
     build_prediction,
     build_user_prompt,
     prompt_sha256,
@@ -33,13 +36,18 @@ from src.verification.llm_zero_shot import (  # noqa: E402
 )
 
 
-def existing_successes(path: Path, *, model: str, variant: str) -> dict[str, dict[str, Any]]:
-    """Reuse only successful calls from the exact local model and variant."""
+def existing_successes(path: Path, *, model: str, variant: str, evidence_mode: str = "bm25_top3") -> dict[str, dict[str, Any]]:
+    """Reuse only successful calls from the exact local model, variant, and evidence mode."""
     if not path.exists():
         return {}
     successes: dict[str, dict[str, Any]] = {}
     for row in read_jsonl(path):
-        if row.get("status") != "success" or row.get("model") != model or row.get("variant") != variant:
+        if (
+            row.get("status") != "success"
+            or row.get("model") != model
+            or row.get("variant") != variant
+            or row.get("evidence_mode", "bm25_top3") != evidence_mode
+        ):
             continue
         claim_id = str(row.get("claim_id") or "")
         if claim_id:
@@ -55,7 +63,7 @@ def append_jsonl_row(path: Path, row: dict[str, Any]) -> None:
         handle.flush()
 
 
-def parse_json_verdict(response_text: str) -> LLMVerdict:
+def parse_json_verdict(response_text: str, *, claim_only: bool = False) -> LLMVerdict | ClaimOnlyLLMVerdict:
     """Extract one JSON object, tolerating Markdown fences around an otherwise valid response."""
     cleaned = response_text.strip()
     if cleaned.startswith("```"):
@@ -71,7 +79,8 @@ def parse_json_verdict(response_text: str) -> LLMVerdict:
         except json.JSONDecodeError:
             continue
         if isinstance(value, dict):
-            return LLMVerdict.model_validate(normalize_local_verdict_fields(value))
+            schema = ClaimOnlyLLMVerdict if claim_only else LLMVerdict
+            return schema.model_validate(normalize_local_verdict_fields(value))
     raise ValueError("Local model did not return a valid JSON verdict object")
 
 
@@ -142,12 +151,13 @@ def generate_local_verdict(
     model: Any,
     tokenizer: Any,
     torch: Any,
+    system_prompt: str,
     user_prompt: str,
     max_new_tokens: int,
-) -> tuple[LLMVerdict, str]:
+) -> tuple[LLMVerdict | ClaimOnlyLLMVerdict, str]:
     """Generate one deterministic non-thinking Qwen-compatible response."""
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
     try:
@@ -169,79 +179,159 @@ def generate_local_verdict(
             pad_token_id=tokenizer.eos_token_id,
         )
     response_text = tokenizer.decode(generated[0][input_length:], skip_special_tokens=True).strip()
-    return parse_json_verdict(response_text), response_text
+    return parse_json_verdict(response_text, claim_only=system_prompt == CLAIM_ONLY_SYSTEM_PROMPT), response_text
+
+
+def gold_evidence_passages(claim: dict[str, Any], *, max_evidence: int) -> list[dict[str, Any]]:
+    """Return at most three human-annotated answers for the non-deployable oracle diagnostic."""
+    return [
+        {
+            "passage_id": str(item["passage_id"]),
+            "text": str(item["text"]),
+            "url": item.get("url"),
+            "metadata": item.get("metadata") or {},
+        }
+        for item in list(claim.get("evidence") or [])[:max_evidence]
+        if item.get("passage_id") and str(item.get("text") or "").strip()
+    ]
+
+
+def build_cases(
+    *,
+    claims: list[dict[str, Any]],
+    rankings_path: Path | None,
+    evidence_mode: str,
+    max_evidence: int,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Build an ordered inference set and report claims excluded from the gold oracle."""
+    claims_by_id = {str(row["claim_id"]): row for row in claims}
+    if evidence_mode == "bm25_top3":
+        if rankings_path is None:
+            raise ValueError("--rankings is required for --evidence-mode bm25_top3.")
+        cases = []
+        for ranking in read_jsonl(rankings_path):
+            claim_id = str(ranking["claim_id"])
+            cases.append({"claim_id": claim_id, "claim": claims_by_id.get(claim_id), "passages": list(ranking.get("retrieved") or [])[:3]})
+        return cases, []
+    if evidence_mode == "claim_only":
+        return [{"claim_id": str(claim["claim_id"]), "claim": claim, "passages": []} for claim in claims], []
+    cases = []
+    excluded_claim_ids = []
+    for claim in claims:
+        passages = gold_evidence_passages(claim, max_evidence=max_evidence)
+        if not passages:
+            excluded_claim_ids.append(str(claim["claim_id"]))
+            continue
+        cases.append({"claim_id": str(claim["claim_id"]), "claim": claim, "passages": passages})
+    return cases, excluded_claim_ids
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--claims", required=True, type=Path)
-    parser.add_argument("--rankings", required=True, type=Path)
+    parser.add_argument("--rankings", type=Path, help="Required only for --evidence-mode bm25_top3.")
     parser.add_argument("--model", default="Qwen/Qwen3-4B", help="Hugging Face model identifier; record this exact ID in the writeup.")
     parser.add_argument("--variant", choices=("classify_top3", "rerank_top20_and_classify"), default="classify_top3")
+    parser.add_argument(
+        "--evidence-mode",
+        choices=("claim_only", "bm25_top3", "gold_top3"),
+        default="bm25_top3",
+        help="claim_only is a no-evidence diagnostic; gold_top3 is a non-deployable capped oracle diagnostic.",
+    )
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "outputs" / "local_llm")
     parser.add_argument("--run-name", help="Name for an isolated, resumable run directory.")
     parser.add_argument("--qrels", type=Path, help="Optional URL-proxy relevance judgments for coverage diagnostics.")
     parser.add_argument("--max-claims", type=int, default=0, help="0 means all ranked claims; use 20 for a GPU smoke test.")
+    parser.add_argument("--max-evidence", type=int, default=3, help="Gold-answer cap for --evidence-mode gold_top3.")
     parser.add_argument("--max-chars-per-passage", type=int, default=1200)
     parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument("--seed", type=int, default=718)
     args = parser.parse_args()
-    if args.max_claims < 0 or args.max_chars_per_passage < 1 or args.max_new_tokens < 1:
-        parser.error("--max-claims must be nonnegative and text/token limits must be positive.")
+    if args.max_claims < 0 or args.max_chars_per_passage < 1 or args.max_new_tokens < 1 or args.max_evidence < 1:
+        parser.error("--max-claims must be nonnegative and evidence/text/token limits must be positive.")
+    if args.evidence_mode == "bm25_top3" and args.variant != "classify_top3":
+        parser.error("The checkpoint BM25 comparison uses --variant classify_top3; rerank_top20 is a separate optional experiment.")
+    if args.evidence_mode != "bm25_top3" and args.variant != "classify_top3":
+        parser.error("--variant rerank_top20_and_classify is valid only with --evidence-mode bm25_top3.")
     try:
         args.output_dir = resolve_run_directory(args.output_dir, args.run_name)
     except ValueError as error:
         parser.error(str(error))
 
     random.seed(args.seed)
-    claims = {str(row["claim_id"]): row for row in read_jsonl(args.claims)}
-    rankings = read_jsonl(args.rankings)
+    claim_rows = read_jsonl(args.claims)
+    cases, gold_evidence_missing_claim_ids = build_cases(
+        claims=claim_rows,
+        rankings_path=args.rankings,
+        evidence_mode=args.evidence_mode,
+        max_evidence=args.max_evidence,
+    )
     if args.max_claims:
-        rankings = rankings[: args.max_claims]
-    if not rankings:
-        parser.error("No rankings were available for local LLM inference.")
-    candidate_limit = 3 if args.variant == "classify_top3" else 20
+        cases = cases[: args.max_claims]
+    if not cases:
+        parser.error("No claims were available for local LLM inference.")
+    candidate_limit = 0 if args.evidence_mode == "claim_only" else 3
+    output_stem = "claim_only" if args.evidence_mode == "claim_only" else "gold_top3" if args.evidence_mode == "gold_top3" else args.variant
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    raw_path = args.output_dir / f"{args.variant}_raw.jsonl"
-    cached = existing_successes(raw_path, model=args.model, variant=args.variant)
+    raw_path = args.output_dir / f"{output_stem}_raw.jsonl"
+    cached = existing_successes(raw_path, model=args.model, variant=args.variant, evidence_mode=args.evidence_mode)
     model, tokenizer, torch = load_local_model(args.model)
     model_revision = getattr(model.config, "_commit_hash", None)
     predictions_by_claim: dict[str, dict[str, Any]] = {}
     errors: list[dict[str, Any]] = []
 
-    with progress(total=len(rankings), initial=sum(str(row["claim_id"]) in cached for row in rankings), description="Local LLM", unit="claim") as bar:
-        for ranking in rankings:
-            claim_id = str(ranking["claim_id"])
+    with progress(
+        total=len(cases),
+        initial=sum(str(row["claim_id"]) in cached for row in cases),
+        description=f"Local LLM ({args.evidence_mode})",
+        unit="claim",
+    ) as bar:
+        for case in cases:
+            claim_id = str(case["claim_id"])
             cached_row = cached.get(claim_id)
             if cached_row is not None:
                 predictions_by_claim[claim_id] = cached_row["parsed"]["prediction"]
                 continue
-            claim = claims.get(claim_id)
-            passages = list(ranking.get("retrieved") or [])[:candidate_limit]
-            if claim is None or len(passages) != candidate_limit:
+            claim = case["claim"]
+            passages = case["passages"]
+            expected_passage_count = candidate_limit if args.evidence_mode == "bm25_top3" else None
+            if claim is None or (expected_passage_count is not None and len(passages) != expected_passage_count):
                 error = {
                     "claim_id": claim_id,
                     "status": "error",
-                    "error": "claim_missing_from_claims_file" if claim is None else f"ranking_has_{len(passages)}_passages_but_requires_{candidate_limit}",
+                    "error": "claim_missing_from_claims_file" if claim is None else f"ranking_has_{len(passages)}_passages_but_requires_{expected_passage_count}",
                 }
                 errors.append(error)
-                append_jsonl_row(raw_path, {**error, "model": args.model, "variant": args.variant})
+                append_jsonl_row(raw_path, {**error, "model": args.model, "variant": args.variant, "evidence_mode": args.evidence_mode})
                 bar.update(1)
                 continue
             try:
-                user_prompt = build_user_prompt(claim["claim"], passages, args.variant, args.max_chars_per_passage)
+                if args.evidence_mode == "claim_only":
+                    system_prompt = CLAIM_ONLY_SYSTEM_PROMPT
+                    user_prompt = build_claim_only_prompt(claim["claim"])
+                else:
+                    system_prompt = SYSTEM_PROMPT
+                    user_prompt = build_user_prompt(
+                        claim["claim"],
+                        passages,
+                        args.variant,
+                        args.max_chars_per_passage,
+                        evidence_description="human-annotated evidence answers" if args.evidence_mode == "gold_top3" else "retrieved passages",
+                    )
                 result, response_text = generate_local_verdict(
                     model=model,
                     tokenizer=tokenizer,
                     torch=torch,
+                    system_prompt=system_prompt,
                     user_prompt=user_prompt,
                     max_new_tokens=args.max_new_tokens,
                 )
-                validate_llm_verdict(result, passages, args.variant)
+                if args.evidence_mode != "claim_only":
+                    validate_llm_verdict(result, passages, args.variant)
                 prediction = build_prediction(claim_id, claim.get("label"), result)
-                prediction["evidence_passage_ids"] = (
+                prediction["evidence_passage_ids"] = [] if args.evidence_mode == "claim_only" else (
                     result.selected_passage_ids
-                    if args.variant == "rerank_top20_and_classify"
+                    if args.evidence_mode == "gold_top3" or args.variant == "rerank_top20_and_classify"
                     else [str(item["passage_id"]) for item in passages]
                 )
                 predictions_by_claim[claim_id] = prediction
@@ -254,7 +344,8 @@ def main() -> None:
                         "model": args.model,
                         "model_revision": model_revision,
                         "variant": args.variant,
-                        "prompt_sha256": prompt_sha256(SYSTEM_PROMPT, user_prompt),
+                        "evidence_mode": args.evidence_mode,
+                        "prompt_sha256": prompt_sha256(system_prompt, user_prompt),
                         "candidate_passage_ids": [str(item["passage_id"]) for item in passages],
                         "parsed": {"prediction": prediction},
                         "response_text": response_text,
@@ -266,26 +357,28 @@ def main() -> None:
                     "status": "error",
                     "model": args.model,
                     "variant": args.variant,
+                    "evidence_mode": args.evidence_mode,
                     "error": f"{type(error).__name__}: {error}",
                 }
                 errors.append(error_row)
                 append_jsonl_row(raw_path, error_row)
             bar.update(1)
 
-    predictions = [predictions_by_claim[str(row["claim_id"])] for row in rankings if str(row["claim_id"]) in predictions_by_claim]
-    write_jsonl(predictions, args.output_dir / f"{args.variant}_predictions.jsonl")
-    write_jsonl(errors, args.output_dir / f"{args.variant}_errors.jsonl")
+    predictions = [predictions_by_claim[str(row["claim_id"])] for row in cases if str(row["claim_id"]) in predictions_by_claim]
+    write_jsonl(predictions, args.output_dir / f"{output_stem}_predictions.jsonl")
+    write_jsonl(errors, args.output_dir / f"{output_stem}_errors.jsonl")
     metrics = evaluate_predictions(predictions) if predictions else {"claim_count": 0}
     coverage_artifacts: dict[str, str] = {}
-    if args.qrels and predictions:
+    if args.qrels and predictions and args.evidence_mode == "bm25_top3":
         qrels = {
             str(row["claim_id"]): [str(value) for value in row.get("relevant_passage_ids") or []]
             for row in read_jsonl(args.qrels)
             if row.get("relevant_passage_ids")
         }
+        rankings = read_jsonl(args.rankings)
         coverage = annotate_retrieval_coverage(predictions, rankings, qrels, k=3)
-        coverage_path = args.output_dir / f"{args.variant}_evidence_coverage.jsonl"
-        conditioned_metrics_path = args.output_dir / f"{args.variant}_retrieval_conditioned_metrics.json"
+        coverage_path = args.output_dir / f"{output_stem}_evidence_coverage.jsonl"
+        conditioned_metrics_path = args.output_dir / f"{output_stem}_retrieval_conditioned_metrics.json"
         write_jsonl(coverage, coverage_path)
         conditioned_metrics_path.write_text(
             json.dumps(evaluate_by_retrieval_coverage(predictions, rankings, qrels, k=3), indent=2) + "\n",
@@ -302,25 +395,41 @@ def main() -> None:
         "model": args.model,
         "model_revision": model_revision,
         "variant": args.variant,
+        "evidence_mode": args.evidence_mode,
         "run_name": args.run_name,
         "seed": args.seed,
         "generation": {"do_sample": False, "max_new_tokens": args.max_new_tokens, "thinking": "disabled"},
         "candidate_limit": candidate_limit,
+        "gold_evidence_cap": args.max_evidence if args.evidence_mode == "gold_top3" else None,
+        "gold_evidence_missing_claim_count": len(gold_evidence_missing_claim_ids),
+        "gold_evidence_missing_claim_samples": gold_evidence_missing_claim_ids[:10],
         "max_chars_per_passage": args.max_chars_per_passage,
         "successful_claim_count": successful_count,
         "cached_success_count": len(cached),
         "error_count": len(errors),
-        "system_prompt": SYSTEM_PROMPT,
-        "warning": "LLM reported confidence is not a calibrated probability and is excluded from calibration metrics.",
+        "system_prompt": CLAIM_ONLY_SYSTEM_PROMPT if args.evidence_mode == "claim_only" else SYSTEM_PROMPT,
+        "warning": (
+            "This is a no-evidence diagnostic, not an evidence-grounded deployment result. "
+            "LLM reported confidence is not a calibrated probability and is excluded from calibration metrics."
+            if args.evidence_mode == "claim_only"
+            else "gold_top3 uses human-annotated answers and is a non-deployable oracle diagnostic. "
+            "LLM reported confidence is not a calibrated probability and is excluded from calibration metrics."
+            if args.evidence_mode == "gold_top3"
+            else "LLM reported confidence is not a calibrated probability and is excluded from calibration metrics."
+        ),
         "artifacts": coverage_artifacts,
     }
-    (args.output_dir / f"{args.variant}_metrics.json").write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
-    (args.output_dir / f"{args.variant}_config.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    (args.output_dir / f"{output_stem}_metrics.json").write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
+    (args.output_dir / f"{output_stem}_config.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     write_run_manifest(
-        args.output_dir / f"{args.variant}_manifest.json",
+        args.output_dir / f"{output_stem}_manifest.json",
         project_root=PROJECT_ROOT,
         config={key: value for key, value in config.items() if key != "system_prompt"},
-        input_paths={"claims": args.claims, "rankings": args.rankings, **({"qrels": args.qrels} if args.qrels else {})},
+        input_paths={
+            "claims": args.claims,
+            **({"rankings": args.rankings} if args.evidence_mode == "bm25_top3" and args.rankings else {}),
+            **({"qrels": args.qrels} if args.evidence_mode == "bm25_top3" and args.qrels else {}),
+        },
     )
     print(json.dumps({**config, **metrics}, indent=2))
 

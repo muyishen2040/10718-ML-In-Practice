@@ -49,3 +49,29 @@ def test_success_cache_filters_to_exact_model_and_variant(tmp_path) -> None:
     cached = LOCAL_LLM.existing_successes(raw_path, model="Qwen/Qwen3-4B", variant="classify_top3")
 
     assert set(cached) == {"c1"}
+
+
+def test_build_cases_supports_claim_only_and_capped_gold_evidence() -> None:
+    claims = [
+        {
+            "claim_id": "c1",
+            "claim": "one",
+            "evidence": [
+                {"passage_id": "c1-g1", "text": "gold one"},
+                {"passage_id": "c1-g2", "text": "gold two"},
+            ],
+        },
+        {"claim_id": "c2", "claim": "two", "evidence": []},
+    ]
+
+    claim_only_cases, claim_only_excluded = LOCAL_LLM.build_cases(
+        claims=claims, rankings_path=None, evidence_mode="claim_only", max_evidence=3
+    )
+    gold_cases, gold_excluded = LOCAL_LLM.build_cases(
+        claims=claims, rankings_path=None, evidence_mode="gold_top3", max_evidence=1
+    )
+
+    assert [case["passages"] for case in claim_only_cases] == [[], []]
+    assert claim_only_excluded == []
+    assert [item["passage_id"] for item in gold_cases[0]["passages"]] == ["c1-g1"]
+    assert gold_excluded == ["c2"]
