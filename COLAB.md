@@ -88,13 +88,19 @@ passage-level recall. The corpus audit reports unresolved annotated URLs.
 ## 5. Run retrieval and classifier baselines
 
 ```python
-!python scripts/run_bm25.py --split dev --data-root "{DATA_ROOT}" --ranking-k 20 --metric-k 3 \
+!python scripts/run_bm25.py --split dev --data-root "{DATA_ROOT}" --ranking-k 20 --metric-k 3 --resume \
   --output-dir outputs/bm25 --run-name dev_bm25_top20_v1
 ```
 
 This writes 20 deterministic candidates per claim for the LLM reranking
 baseline but evaluates the user-facing first three only. The TF-IDF verifier
 and `classify_top3` LLM variant consume its first three saved passages.
+
+The runner checkpoints every 10 completed claims in
+`dev_rankings.partial.jsonl`. If Colab disconnects or you stop the cell, rerun
+the exact command with `--resume`; completed claims are reused. The partial
+file is removed automatically only after the final rankings and metrics have
+been written.
 
 For a fair BM25-evidence verifier, prepare the train and dev candidate-document
 collections separately, using identical chunking/BM25 settings. The official

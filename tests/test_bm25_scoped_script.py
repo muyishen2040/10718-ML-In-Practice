@@ -23,3 +23,16 @@ def test_per_claim_groups_preserve_candidate_boundaries(tmp_path) -> None:
 
     assert [claim_id for claim_id, _ in groups] == ["c1", "c2"]
     assert [item.passage_id for item in groups[0][1]] == ["c1-p1", "c1-p2"]
+
+
+def test_checkpoint_rankings_round_trip(tmp_path) -> None:
+    checkpoint_path = tmp_path / "dev_rankings.partial.jsonl"
+    rankings = [
+        {"claim_id": "c1", "claim": "claim one", "retrieved": []},
+        {"claim_id": "c2", "claim": "claim two", "retrieved": [{"passage_id": "c2-p1"}]},
+    ]
+
+    RUN_BM25.append_checkpoint_rows(checkpoint_path, rankings)
+    loaded = RUN_BM25.load_checkpoint_rankings(checkpoint_path, known_claim_ids={"c1", "c2"})
+
+    assert loaded == {"c1": rankings[0], "c2": rankings[1]}

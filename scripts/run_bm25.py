@@ -83,6 +83,34 @@ def load_qrels(path: Path) -> dict[str, list[str]]:
     return qrels
 
 
+def load_checkpoint_rankings(path: Path, *, known_claim_ids: set[str]) -> dict[str, dict[str, Any]]:
+    """Load completed claim rankings from an interrupted run's append-only checkpoint."""
+    if not path.exists():
+        return {}
+    completed: dict[str, dict[str, Any]] = {}
+    for row in read_jsonl(path):
+        claim_id = str(row.get("claim_id") or "")
+        if claim_id not in known_claim_ids:
+            raise ValueError(f"Checkpoint {path} contains an unknown claim ID: {claim_id!r}")
+        if claim_id in completed:
+            raise ValueError(f"Checkpoint {path} contains duplicate claim ID: {claim_id!r}")
+        if not isinstance(row.get("retrieved"), list):
+            raise ValueError(f"Checkpoint {path} has malformed ranking for claim {claim_id!r}")
+        completed[claim_id] = row
+    return completed
+
+
+def append_checkpoint_rows(path: Path, rows: list[dict[str, Any]]) -> None:
+    """Durably make a small batch of completed rankings available for --resume."""
+    if not rows:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8", newline="\n") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+        handle.flush()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--split", choices=("train", "dev", "test"), default="dev")
@@ -94,6 +122,8 @@ def main() -> None:
     parser.add_argument("--k", type=int, default=3, help="Legacy shortcut: use this value for both saved rankings and metrics.")
     parser.add_argument("--ranking-k", type=int, help="Number of passages to save per claim; use 20 for the LLM reranking baseline.")
     parser.add_argument("--metric-k", type=int, help="Rank cutoff for retrieval metrics; normally 3 for the user-facing interface.")
+    parser.add_argument("--resume", action="store_true", help="Resume an interrupted run from its checkpoint in this run directory.")
+    parser.add_argument("--checkpoint-every", type=int, default=10, help="Save completed rankings every N claims; 1 is safest but slower.")
     args = parser.parse_args()
     try:
         args.output_dir = resolve_run_directory(args.output_dir, args.run_name)
@@ -101,11 +131,25 @@ def main() -> None:
         parser.error(str(error))
     ranking_k = args.ranking_k if args.ranking_k is not None else args.k
     metric_k = args.metric_k if args.metric_k is not None else args.k
-    if ranking_k < 1 or metric_k < 1:
-        parser.error("--k, --ranking-k, and --metric-k must be at least one.")
+    if ranking_k < 1 or metric_k < 1 or args.checkpoint_every < 1:
+        parser.error("--k, --ranking-k, --metric-k, and --checkpoint-every must be at least one.")
 
     processed = args.data_root / "processed" / "averitec"
     claims = read_jsonl(processed / f"{args.split}.jsonl")
+    claim_by_id = {str(claim["claim_id"]): claim for claim in claims}
+    if len(claim_by_id) != len(claims):
+        raise ValueError(f"Claim file contains duplicate claim IDs: {processed / f'{args.split}.jsonl'}")
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    ranking_path = args.output_dir / f"{args.split}_rankings.jsonl"
+    checkpoint_path = args.output_dir / f"{args.split}_rankings.partial.jsonl"
+    if ranking_path.exists():
+        parser.error(f"Final rankings already exist at {ranking_path}. Use a new --run-name to preserve this result.")
+    if checkpoint_path.exists() and not args.resume:
+        parser.error(f"Interrupted-run checkpoint exists at {checkpoint_path}; rerun with --resume or use a new --run-name.")
+    completed_rankings = load_checkpoint_rankings(checkpoint_path, known_claim_ids=set(claim_by_id)) if args.resume else {}
+    if completed_rankings:
+        print(f"Resuming BM25: reusing {len(completed_rankings)} completed claim rankings.")
+
     corpus_path = args.corpus or processed / f"{args.split}_evidence_corpus.jsonl"
     first_corpus_row = next(iter(iter_jsonl(corpus_path)), None)
     if first_corpus_row is None:
@@ -114,49 +158,71 @@ def main() -> None:
     corpus_passage_count = 0
     missing_candidate_pool_claim_ids: list[str] = []
     if candidate_pool_scoped:
-        claim_by_id = {str(claim["claim_id"]): claim for claim in claims}
-        retrieved_by_claim_id: dict[str, list[dict[str, Any]]] = {}
-        with progress(total=len(claims), description="Running BM25", unit="claim") as bar:
-            for candidate_claim_id, candidate_items in per_claim_candidate_groups(corpus_path):
-                corpus_passage_count += len(candidate_items)
-                claim = claim_by_id.get(candidate_claim_id)
-                if claim is None:
-                    continue
-                retriever = BM25Retriever(candidate_items)
-                retrieved_by_claim_id[candidate_claim_id] = [
-                    item.to_dict() for item in retriever.retrieve(str(claim["claim"]), k=ranking_k)
-                ]
-                bar.update(1)
+        retrieved_by_claim_id = dict(completed_rankings)
+        pending_checkpoint_rows: list[dict[str, Any]] = []
+        with progress(
+            total=len(claims), initial=len(completed_rankings), description="Running BM25", unit="claim"
+        ) as bar:
+            try:
+                for candidate_claim_id, candidate_items in per_claim_candidate_groups(corpus_path):
+                    corpus_passage_count += len(candidate_items)
+                    claim = claim_by_id.get(candidate_claim_id)
+                    if claim is None or candidate_claim_id in retrieved_by_claim_id:
+                        continue
+                    ranking = {
+                        "claim_id": candidate_claim_id,
+                        "claim": claim["claim"],
+                        "retrieved": [item.to_dict() for item in BM25Retriever(candidate_items).retrieve(str(claim["claim"]), k=ranking_k)],
+                    }
+                    retrieved_by_claim_id[candidate_claim_id] = ranking
+                    pending_checkpoint_rows.append(ranking)
+                    if len(pending_checkpoint_rows) >= args.checkpoint_every:
+                        append_checkpoint_rows(checkpoint_path, pending_checkpoint_rows)
+                        pending_checkpoint_rows = []
+                    bar.update(1)
+            finally:
+                append_checkpoint_rows(checkpoint_path, pending_checkpoint_rows)
         rankings = []
         for claim in claims:
             claim_id = str(claim["claim_id"])
-            retrieved = retrieved_by_claim_id.get(claim_id, [])
-            if not retrieved:
+            ranking = retrieved_by_claim_id.get(claim_id)
+            if ranking is None:
                 missing_candidate_pool_claim_ids.append(claim_id)
-            rankings.append({"claim_id": claim_id, "claim": claim["claim"], "retrieved": retrieved})
+                ranking = {"claim_id": claim_id, "claim": claim["claim"], "retrieved": []}
+            rankings.append(ranking)
         retrieval_scope = "per_claim_candidate_pool"
     else:
         corpus = load_corpus(corpus_path)
         corpus_passage_count = len(corpus)
         retriever = BM25Retriever(corpus)
-        rankings = []
-        with progress(total=len(claims), description="Running BM25", unit="claim") as bar:
-            for claim in claims:
-                rankings.append(
-                    {
-                        "claim_id": claim["claim_id"],
+        rankings_by_claim_id = dict(completed_rankings)
+        pending_checkpoint_rows = []
+        with progress(
+            total=len(claims), initial=len(completed_rankings), description="Running BM25", unit="claim"
+        ) as bar:
+            try:
+                for claim in claims:
+                    claim_id = str(claim["claim_id"])
+                    if claim_id in rankings_by_claim_id:
+                        continue
+                    ranking = {
+                        "claim_id": claim_id,
                         "claim": claim["claim"],
-                        "retrieved": [
-                            item.to_dict() for item in retriever.retrieve(str(claim["claim"]), k=ranking_k)
-                        ],
+                        "retrieved": [item.to_dict() for item in retriever.retrieve(str(claim["claim"]), k=ranking_k)],
                     }
-                )
-                bar.update(1)
+                    rankings_by_claim_id[claim_id] = ranking
+                    pending_checkpoint_rows.append(ranking)
+                    if len(pending_checkpoint_rows) >= args.checkpoint_every:
+                        append_checkpoint_rows(checkpoint_path, pending_checkpoint_rows)
+                        pending_checkpoint_rows = []
+                    bar.update(1)
+            finally:
+                append_checkpoint_rows(checkpoint_path, pending_checkpoint_rows)
+        rankings = [rankings_by_claim_id[str(claim["claim_id"])] for claim in claims]
         retrieval_scope = "global_static_corpus"
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    ranking_path = args.output_dir / f"{args.split}_rankings.jsonl"
     write_jsonl(rankings, ranking_path)
+    checkpoint_path.unlink(missing_ok=True)
 
     qrels_path = args.qrels or processed / f"{args.split}_qrels.jsonl"
     report: dict[str, Any] = {
@@ -170,6 +236,7 @@ def main() -> None:
         "claims_without_candidate_pool_count": len(missing_candidate_pool_claim_ids),
         "claims_without_candidate_pool_samples": missing_candidate_pool_claim_ids[:10],
         "rankings_path": str(ranking_path),
+        "resumed_claim_count": len(completed_rankings),
     }
     if qrels_path.exists():
         qrels = load_qrels(qrels_path)
@@ -197,6 +264,8 @@ def main() -> None:
             "split": args.split,
             "ranking_k": ranking_k,
             "metric_k": metric_k,
+            "resume": args.resume,
+            "checkpoint_every": args.checkpoint_every,
             "tokenizer": "unicode_word_casefold",
             "tie_break": "passage_id_ascending",
         },
