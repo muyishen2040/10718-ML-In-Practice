@@ -341,16 +341,14 @@ def main() -> None:
                     max_new_tokens=args.max_new_tokens,
                 )
                 citation_error = None
-                if args.evidence_mode == "gold_top3":
-                    validate_llm_verdict(result, passages, args.variant)
-                elif args.evidence_mode == "bm25_top3" and not no_bm25_passages:
+                if args.evidence_mode in {"bm25_top3", "gold_top3"} and not no_bm25_passages:
                     citation_error = citation_validation_error(result, passages, args.variant)
                     invalid_citation_count += int(citation_error is not None)
                 prediction = build_prediction(claim_id, claim.get("label"), result)
                 prediction["evidence_passage_ids"] = [] if args.evidence_mode == "claim_only" or no_bm25_passages else (
-                    result.selected_passage_ids
-                    if args.evidence_mode == "gold_top3" or args.variant == "rerank_top20_and_classify"
-                    else [str(item["passage_id"]) for item in passages]
+                    [str(item["passage_id"]) for item in passages]
+                    if args.evidence_mode == "gold_top3" or args.variant == "classify_top3"
+                    else result.selected_passage_ids
                 )
                 predictions_by_claim[claim_id] = prediction
                 append_jsonl_row(
