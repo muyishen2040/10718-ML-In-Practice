@@ -226,6 +226,15 @@ def build_cases(
     return cases, excluded_claim_ids
 
 
+def citation_validation_error(result: LLMVerdict, passages: list[dict[str, Any]], variant: str) -> str | None:
+    """Return a citation-format error without discarding an otherwise valid top-3 verdict."""
+    try:
+        validate_llm_verdict(result, passages, variant)
+    except ValueError as error:
+        return str(error)
+    return None
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--claims", required=True, type=Path)
@@ -279,6 +288,8 @@ def main() -> None:
     model_revision = getattr(model.config, "_commit_hash", None)
     predictions_by_claim: dict[str, dict[str, Any]] = {}
     errors: list[dict[str, Any]] = []
+    invalid_citation_count = 0
+    zero_passage_fallback_count = 0
 
     with progress(
         total=len(cases),
@@ -295,7 +306,8 @@ def main() -> None:
             claim = case["claim"]
             passages = case["passages"]
             expected_passage_count = candidate_limit if args.evidence_mode == "bm25_top3" else None
-            if claim is None or (expected_passage_count is not None and len(passages) != expected_passage_count):
+            no_bm25_passages = args.evidence_mode == "bm25_top3" and not passages
+            if claim is None or (expected_passage_count is not None and len(passages) != expected_passage_count and not no_bm25_passages):
                 error = {
                     "claim_id": claim_id,
                     "status": "error",
@@ -306,9 +318,11 @@ def main() -> None:
                 bar.update(1)
                 continue
             try:
-                if args.evidence_mode == "claim_only":
+                if args.evidence_mode == "claim_only" or no_bm25_passages:
                     system_prompt = CLAIM_ONLY_SYSTEM_PROMPT
                     user_prompt = build_claim_only_prompt(claim["claim"])
+                    if no_bm25_passages:
+                        zero_passage_fallback_count += 1
                 else:
                     system_prompt = SYSTEM_PROMPT
                     user_prompt = build_user_prompt(
@@ -326,10 +340,14 @@ def main() -> None:
                     user_prompt=user_prompt,
                     max_new_tokens=args.max_new_tokens,
                 )
-                if args.evidence_mode != "claim_only":
+                citation_error = None
+                if args.evidence_mode == "gold_top3":
                     validate_llm_verdict(result, passages, args.variant)
+                elif args.evidence_mode == "bm25_top3" and not no_bm25_passages:
+                    citation_error = citation_validation_error(result, passages, args.variant)
+                    invalid_citation_count += int(citation_error is not None)
                 prediction = build_prediction(claim_id, claim.get("label"), result)
-                prediction["evidence_passage_ids"] = [] if args.evidence_mode == "claim_only" else (
+                prediction["evidence_passage_ids"] = [] if args.evidence_mode == "claim_only" or no_bm25_passages else (
                     result.selected_passage_ids
                     if args.evidence_mode == "gold_top3" or args.variant == "rerank_top20_and_classify"
                     else [str(item["passage_id"]) for item in passages]
@@ -345,6 +363,8 @@ def main() -> None:
                         "model_revision": model_revision,
                         "variant": args.variant,
                         "evidence_mode": args.evidence_mode,
+                        "bm25_zero_passage_fallback": no_bm25_passages,
+                        "citation_validation_error": citation_error,
                         "prompt_sha256": prompt_sha256(system_prompt, user_prompt),
                         "candidate_passage_ids": [str(item["passage_id"]) for item in passages],
                         "parsed": {"prediction": prediction},
@@ -403,6 +423,8 @@ def main() -> None:
         "gold_evidence_cap": args.max_evidence if args.evidence_mode == "gold_top3" else None,
         "gold_evidence_missing_claim_count": len(gold_evidence_missing_claim_ids),
         "gold_evidence_missing_claim_samples": gold_evidence_missing_claim_ids[:10],
+        "bm25_zero_passage_fallback_count": zero_passage_fallback_count,
+        "citation_validation_error_count": invalid_citation_count,
         "max_chars_per_passage": args.max_chars_per_passage,
         "successful_claim_count": successful_count,
         "cached_success_count": len(cached),

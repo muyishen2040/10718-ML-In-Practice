@@ -75,3 +75,16 @@ def test_build_cases_supports_claim_only_and_capped_gold_evidence() -> None:
     assert claim_only_excluded == []
     assert [item["passage_id"] for item in gold_cases[0]["passages"]] == ["c1-g1"]
     assert gold_excluded == ["c2"]
+
+
+def test_invalid_top_three_citation_does_not_discard_verdict() -> None:
+    verdict = LOCAL_LLM.LLMVerdict(
+        label="Refuted",
+        selected_passage_ids=["made-up-id"],
+        reported_confidence=0.6,
+        brief_rationale="The supplied passage contradicts the claim.",
+    )
+
+    error = LOCAL_LLM.citation_validation_error(verdict, [{"passage_id": "p1", "text": "text"}], "classify_top3")
+
+    assert error == "LLM selected a passage ID outside the supplied candidates"
