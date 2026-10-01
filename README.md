@@ -86,10 +86,11 @@ not comparable to the user-facing top-three-evidence setting.
 
 ## Run the LLM baseline
 
-Install `requirements-colab.txt`, set `OPENAI_API_KEY` outside the repository,
-and follow [COLAB.md](COLAB.md). The runner requires an exact model ID and
-stores the frozen prompt, selected evidence IDs, raw structured response, token
-usage, and errors for reproducibility.
+For Colab GPU, the recommended runner is the 4-bit local Qwen3 baseline in
+[COLAB.md](COLAB.md). It caches one completed claim at a time so an interrupted
+GPU session can resume. The hosted OpenAI runner remains available as an
+alternative; it requires `requirements-colab.txt` and `OPENAI_API_KEY` outside
+the repository.
 
 ## Preserve each run for review
 

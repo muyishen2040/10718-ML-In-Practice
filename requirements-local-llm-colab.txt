@@ -1,0 +1,5 @@
+-r requirements-colab.txt
+# Colab normally provides PyTorch. These packages add 4-bit local GPU inference.
+transformers>=4.51,<5
+accelerate>=1,<2
+bitsandbytes>=0.43,<1

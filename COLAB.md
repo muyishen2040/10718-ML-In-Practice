@@ -150,6 +150,38 @@ annotated answers; `gold_all` is an explicitly non-deployable oracle bound.
 
 ## 6. Run a zero-shot LLM baseline
 
+### Recommended: local Qwen3 on the Colab GPU
+
+This is the recommended checkpoint LLM baseline: it uses the open
+`Qwen/Qwen3-4B` model, loaded in 4-bit mode on a Colab T4/L4 GPU. It uses the
+same frozen evidence-only prompt and BM25 top three as the hosted runner, but
+does not require an API key. Select a GPU in **Runtime > Change runtime type**,
+then install the local-inference extras:
+
+```python
+!pip install -q -r requirements-local-llm-colab.txt
+!nvidia-smi
+```
+
+Run a 20-claim pilot first. The raw output cache is appended after every claim,
+so rerunning this exact command resumes successful calls after a disconnect:
+
+```python
+!python scripts/run_local_llm_baseline.py \
+  --claims "{DATA_ROOT}/processed/averitec/dev.jsonl" \
+  --rankings outputs/bm25/dev_bm25_top20_v1/dev_rankings.jsonl \
+  --qrels "{DATA_ROOT}/processed/averitec/dev_qrels.jsonl" \
+  --model Qwen/Qwen3-4B --variant classify_top3 --max-claims 20 \
+  --output-dir outputs/local_llm --run-name dev_qwen3_4b_top3_v1
+```
+
+After checking the pilot outputs, rerun without `--max-claims` using the same
+run name. The configuration records the model ID, resolved model revision,
+prompt hash, 4-bit inference mode, disabled thinking mode, and generation
+settings. Keep the same model, prompt, and settings for the full run.
+
+### Hosted API alternative
+
 Use a Colab secret or `getpass`; never place the key in a notebook cell that is
 committed to Git.
 
