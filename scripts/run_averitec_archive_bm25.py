@@ -66,7 +66,7 @@ def passages_from_documents(documents: Iterable[dict[str, Any]], claim_id: str, 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--archive", action="append", required=True, type=Path, help="Official archive shard; repeat in source-index order.")
+    parser.add_argument("--archive", action="append", type=Path, help="Official archive shard; repeat in source-index order.")
     parser.add_argument("--split", choices=("train",), default="train")
     parser.add_argument("--data-root", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
@@ -78,6 +78,8 @@ def main() -> None:
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--finalize", action="store_true", help="Write final train_rankings.jsonl only after all three archive shards were processed.")
     args = parser.parse_args()
+    if not args.archive and not args.finalize:
+        parser.error("At least one --archive is required unless using --finalize to materialize an existing checkpoint.")
     if args.ranking_k < 1 or args.checkpoint_every < 1:
         parser.error("--ranking-k and --checkpoint-every must be positive")
     if args.overlap_words < 0 or args.overlap_words >= args.max_words:
@@ -107,7 +109,7 @@ def main() -> None:
     passage_count = 0
     processed_claim_count = 0
 
-    for archive_path in args.archive:
+    for archive_path in args.archive or []:
         if not archive_path.is_file():
             raise FileNotFoundError(archive_path)
         with zipfile.ZipFile(archive_path) as archive:
@@ -156,7 +158,7 @@ def main() -> None:
         "processed_this_invocation_count": processed_claim_count,
         "passages_built_this_invocation": passage_count,
         "checkpoint_path": str(checkpoint_path),
-        "archive_paths": [str(path) for path in args.archive],
+        "archive_paths": [str(path) for path in args.archive or []],
         "finalized": False,
     }
     if args.finalize:

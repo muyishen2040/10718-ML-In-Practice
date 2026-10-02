@@ -191,9 +191,10 @@ time, then finalize only after all three completed:
   --ranking-k 20 --max-words 160 --overlap-words 40 --checkpoint-every 1 --resume
 ```
 
-After all shards have been processed, rerun once with all three `--archive`
-arguments and `--finalize`. This creates `train_rankings.jsonl`, which can be
-used with dev v2 rankings by `train_tfidf_logreg.py --evidence-mode retrieved`.
+After all shards have been processed, rerun once with `--finalize --resume`
+(no archive needs to be copied back). This creates `train_rankings.jsonl`,
+which can be used with dev v2 rankings by `train_tfidf_logreg.py
+--evidence-mode retrieved`.
 The archive downloader also resumes a server-supported `.partial` download;
 save archives on Drive and copy one completed shard to fast local storage for
 the corresponding BM25 pass.
