@@ -11,6 +11,10 @@ data/processed/
 data/external/
 outputs/
 
+# Local checkpoint-writing workspace documents
+AGENT_UPDATE.md
+BASELINE_CHECKPOINT_REPORT_DRAFT.md
+
 # Secrets and local configuration
 .env
 .env.*
