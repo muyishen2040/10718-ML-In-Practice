@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import heapq
 import re
 from collections.abc import Sequence
 
@@ -30,10 +31,16 @@ class BM25Retriever:
         if k < 1:
             raise ValueError("k must be at least 1")
         scores = self._bm25.get_scores(tokenize(claim))
-        ranked_indices = sorted(
+        # Ranking a large candidate pool only needs the first k results.  A
+        # full sort is O(n log n), whereas nsmallest is O(n log k).  This is
+        # exactly the same ordering rule as the previous full sort, including
+        # deterministic passage-ID tie breaking, but avoids sorting millions
+        # of unreturned candidates in AVeriTeC pools.
+        ranked_indices = heapq.nsmallest(
+            min(k, len(self.corpus)),
             range(len(self.corpus)),
             key=lambda index: (-float(scores[index]), self.corpus[index].passage_id),
-        )[:k]
+        )
         return [
             EvidenceItem(
                 passage_id=self.corpus[index].passage_id,
