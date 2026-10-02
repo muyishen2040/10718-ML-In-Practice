@@ -35,6 +35,16 @@ def test_parse_json_verdict_normalizes_common_local_aliases() -> None:
     assert verdict.reported_confidence == 0.7
 
 
+def test_parse_json_verdict_truncates_an_overlong_rationale_without_losing_verdict() -> None:
+    response = '{"label":"Refuted","selected_passage_ids":["p1"],"reported_confidence":0.7,"brief_rationale":"' + "x" * 601 + '"}'
+
+    verdict = LOCAL_LLM.parse_json_verdict(response)
+
+    assert verdict.label == "Refuted"
+    assert verdict.selected_passage_ids == ["p1"]
+    assert len(verdict.brief_rationale) == 600
+
+
 def test_success_cache_filters_to_exact_model_and_variant(tmp_path) -> None:
     raw_path = tmp_path / "classify_top3_raw.jsonl"
     LOCAL_LLM.append_jsonl_row(

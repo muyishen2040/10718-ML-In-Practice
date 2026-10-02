@@ -117,6 +117,13 @@ def normalize_local_verdict_fields(value: dict[str, Any]) -> dict[str, Any]:
             else:
                 passage_ids.append(item)
         normalized["selected_passage_ids"] = passage_ids
+    # The rationale is retained for auditability but does not determine the
+    # predicted label. Local models occasionally exceed the response schema's
+    # display-length limit despite otherwise returning a valid verdict. Keep
+    # the beginning deterministically instead of discarding the entire claim.
+    rationale = normalized.get("brief_rationale")
+    if isinstance(rationale, str):
+        normalized["brief_rationale"] = rationale[:600]
     return normalized
 
 
