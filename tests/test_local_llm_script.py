@@ -61,6 +61,28 @@ def test_success_cache_filters_to_exact_model_and_variant(tmp_path) -> None:
     assert set(cached) == {"c1"}
 
 
+def test_success_cache_retains_warning_fields_for_resumed_run(tmp_path) -> None:
+    raw_path = tmp_path / "classify_top3_raw.jsonl"
+    LOCAL_LLM.append_jsonl_row(
+        raw_path,
+        {
+            "claim_id": "c1",
+            "status": "success",
+            "model": "Qwen/Qwen3-4B",
+            "variant": "classify_top3",
+            "evidence_mode": "bm25_top3",
+            "citation_validation_error": "invalid citation",
+            "bm25_zero_passage_fallback": True,
+            "parsed": {"prediction": {"claim_id": "c1"}},
+        },
+    )
+
+    cached = LOCAL_LLM.existing_successes(raw_path, model="Qwen/Qwen3-4B", variant="classify_top3")
+
+    assert cached["c1"]["citation_validation_error"] == "invalid citation"
+    assert cached["c1"]["bm25_zero_passage_fallback"] is True
+
+
 def test_build_cases_supports_claim_only_and_capped_gold_evidence() -> None:
     claims = [
         {

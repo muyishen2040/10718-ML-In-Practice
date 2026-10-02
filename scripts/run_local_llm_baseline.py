@@ -309,6 +309,8 @@ def main() -> None:
             cached_row = cached.get(claim_id)
             if cached_row is not None:
                 predictions_by_claim[claim_id] = cached_row["parsed"]["prediction"]
+                invalid_citation_count += int(bool(cached_row.get("citation_validation_error")))
+                zero_passage_fallback_count += int(bool(cached_row.get("bm25_zero_passage_fallback")))
                 continue
             claim = case["claim"]
             passages = case["passages"]
