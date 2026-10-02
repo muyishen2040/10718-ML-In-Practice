@@ -51,6 +51,11 @@ This section is the concise source of truth for current progress.
 - The full AVeriTeC knowledge store is **not** downloaded locally. It should be
   prepared in Colab before running actual BM25 retrieval results or the
   BM25-evidence classifier.
+- The completed v1 dev BM25/LLM baseline used a sentence-level URL2text
+  corpus and is frozen for the checkpoint. New scalable experiments should use
+  the opt-in `source_document` normalization mode in a separate v2 data root:
+  it joins each URL row's extracted sentences before 160-word passage chunking.
+  Never mix v1 and v2 retrieval/classification artifacts.
 - Gold-evidence classifier results are verifier-isolation diagnostics, not
   end-to-end retrieval results.
 - Snopes explanations, verdicts, ratings, and fact-check pages are never model
@@ -60,10 +65,10 @@ This section is the concise source of truth for current progress.
 
 ### Still to implement
 
-1. Run the AVeriTeC archive adapter in Colab and inspect its audit; then run
-   URL-based evidence Hit@3/MRR and the BM25 + TF-IDF/logistic-regression
-   end-to-end baseline. The train corpus requires all three large official
-   train shards.
+1. Run the v2 source-document AVeriTeC archive adapter in Colab and inspect
+   its audit; then run URL-based evidence Hit@3/MRR and the BM25 +
+   TF-IDF/logistic-regression end-to-end baseline. The train corpus requires
+   all three large official train shards.
 2. Run the zero-shot LLM baseline with a frozen prompt, recorded exact model
    ID/version, deterministic settings where available, and saved raw outputs.
 3. Add dense retrieval, ModernBERT, Laya, calibration, and the evidence-aware

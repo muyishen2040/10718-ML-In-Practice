@@ -24,8 +24,22 @@ def main() -> None:
         type=int,
         help="Optional deterministic cap for a smoke test; capped corpora are not full-benchmark results.",
     )
+    parser.add_argument(
+        "--url2text-mode",
+        choices=("sentence", "source_document"),
+        default="sentence",
+        help=(
+            "How to normalize AVeriTeC URL-plus-sentence rows. 'sentence' preserves the v1 corpus; "
+            "'source_document' joins each row's extracted sentences before later passage chunking."
+        ),
+    )
     args = parser.parse_args()
-    audit = normalize_zip_to_jsonl(args.archive, args.output_documents, max_documents=args.max_documents)
+    audit = normalize_zip_to_jsonl(
+        args.archive,
+        args.output_documents,
+        max_documents=args.max_documents,
+        url2text_mode=args.url2text_mode,
+    )
     if not audit["normalized_document_count"]:
         raise RuntimeError("No URL/text documents were recognized. Inspect the archive layout and add a dedicated adapter before proceeding.")
     audit_path = args.audit_output or args.output_documents.with_name(f"{args.output_documents.stem}_audit.json")
@@ -34,7 +48,11 @@ def main() -> None:
     write_run_manifest(
         args.output_documents.with_name(f"{args.output_documents.stem}_manifest.json"),
         project_root=PROJECT_ROOT,
-        config={"script": "normalize_averitec_knowledge_store", "max_documents": args.max_documents},
+        config={
+            "script": "normalize_averitec_knowledge_store",
+            "max_documents": args.max_documents,
+            "url2text_mode": args.url2text_mode,
+        },
         input_paths={"archive": args.archive},
     )
     print(json.dumps(audit, indent=2))

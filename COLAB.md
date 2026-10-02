@@ -68,6 +68,32 @@ For a smoke test only, add `--max-documents 10000` and write to a distinct
 file such as `dev_documents_smoke.jsonl`. The resulting corpus is incomplete
 and may be used only to validate the pipeline, never for the checkpoint table.
 
+### Post-checkpoint v2: source-document normalization
+
+The original checkpoint corpus used the safe default `sentence` mode, which
+made each extracted sentence an independent candidate. It is a valid frozen
+baseline, but it created a very large v1 dev corpus. For all *new* scalable
+train/dev experiments, use `source_document` in a **separate data root**. It
+joins each official URL row's extracted sentences first; the next stage then
+creates the same 160-word overlapping passages. Do not mix its results with
+v1 or overwrite v1 artifacts.
+
+```python
+DATA_ROOT_V2 = Path("/content/averitec_v2_source_documents")
+!python scripts/prepare_averitec.py --download-claims --data-root "{DATA_ROOT_V2}"
+!python scripts/normalize_averitec_knowledge_store.py \
+  --archive "{ARCHIVE}" \
+  --output-documents "{DATA_ROOT_V2}/raw/averitec/dev_documents.jsonl" \
+  --url2text-mode source_document
+!python scripts/build_averitec_passage_corpus.py \
+  --documents-jsonl "{DATA_ROOT_V2}/raw/averitec/dev_documents.jsonl" \
+  --split dev --data-root "{DATA_ROOT_V2}" --max-words 160 --overlap-words 40
+```
+
+Review the new normalization audit (`url2text_mode` must be
+`source_document`) and corpus audit before running v2 BM25. Persist the v2
+documents and processed corpus to Drive just as you did for v1.
+
 ## 4. Build passages and URL-based relevance coverage
 
 Once a normalized document file exists, build the per-claim candidate passages
@@ -147,6 +173,24 @@ same order before calling `build_averitec_passage_corpus.py --split train`:
 
 The claim-only and gold modes are diagnostics. `gold` is capped at three
 annotated answers; `gold_all` is an explicitly non-deployable oracle bound.
+
+### Fast verifier diagnostic: TF-IDF + logistic regression with gold evidence
+
+This run needs only the compact train/dev claim files, not the train knowledge
+store or train BM25. It is therefore the right logistic-regression run to do
+now. It measures the verifier when it receives up to three human-annotated
+answers and is an oracle diagnostic, not an end-to-end system score.
+
+```python
+!python scripts/train_tfidf_logreg.py --evidence-mode gold \
+  --data-root "{DATA_ROOT}" \
+  --output-dir "{PERSIST_ROOT}/outputs/tfidf_logreg" \
+  --run-name gold_train_to_dev_v1
+```
+
+The final BM25-retrieved TF-IDF/logistic-regression baseline must wait for
+the v2 train and dev corpora and their separately generated BM25 rankings;
+training on dev rankings would leak evaluation information.
 
 ## 6. Run a zero-shot LLM baseline
 

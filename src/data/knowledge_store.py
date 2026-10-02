@@ -84,12 +84,18 @@ def _candidate_claim_index(source_member: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
-def _documents_from_value(value: Any, source_member: str) -> list[dict[str, Any]]:
+def _documents_from_value(
+    value: Any, source_member: str, *, url2text_mode: str = "sentence"
+) -> list[dict[str, Any]]:
     """Interpret common URL/text JSON shapes without fabricating content."""
+    if url2text_mode not in {"sentence", "source_document"}:
+        raise ValueError("url2text_mode must be 'sentence' or 'source_document'")
     if isinstance(value, list):
         documents = []
         for index, item in enumerate(value):
-            documents.extend(_documents_from_value(item, f"{source_member}#{index}"))
+            documents.extend(
+                _documents_from_value(item, f"{source_member}#{index}", url2text_mode=url2text_mode)
+            )
         return documents
     if not isinstance(value, dict):
         return []
@@ -100,6 +106,25 @@ def _documents_from_value(value: Any, source_member: str) -> list[dict[str, Any]
     sentence_values = value.get("url2text")
     if url and isinstance(sentence_values, list) and all(isinstance(item, str) for item in sentence_values):
         candidate_claim_index = _candidate_claim_index(source_member)
+        cleaned_sentences = [sentence.strip() for sentence in sentence_values if sentence.strip()]
+        if url2text_mode == "source_document" and cleaned_sentences:
+            # Each official JSONL row is a URL and its extracted sentences.
+            # Keep that natural source-document unit, then let the later
+            # passage builder produce overlapping 160-word retrieval chunks.
+            # This is substantially smaller than making every sentence an
+            # independent candidate while preserving the same evidence text.
+            return [
+                {
+                    "document_id": f"{source_member}:source_document",
+                    "url": url,
+                    "text": "\n".join(cleaned_sentences),
+                    "metadata": {
+                        "archive_member": source_member.split("#", 1)[0],
+                        "candidate_claim_index": candidate_claim_index,
+                        "source_format": "averitec_url2text_source_document",
+                    },
+                }
+            ]
         return [
             {
                 "document_id": f"{source_member}:sentence:{sentence_index}",
@@ -129,7 +154,9 @@ def _documents_from_value(value: Any, source_member: str) -> list[dict[str, Any]
     return documents
 
 
-def normalize_zip_to_documents(archive_path: str | Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def normalize_zip_to_documents(
+    archive_path: str | Path, *, url2text_mode: str = "sentence"
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Extract recognized JSON/JSONL/TSV/CSV URL-text records directly from a zip.
 
     Unknown members are counted and omitted rather than guessed. Review the
@@ -148,16 +175,20 @@ def normalize_zip_to_documents(archive_path: str | Path) -> tuple[list[dict[str,
                 with archive.open(member) as binary_handle:
                     if suffix == ".json":
                         value = json.load(io.TextIOWrapper(binary_handle, encoding="utf-8", errors="replace"))
-                        parsed = _documents_from_value(value, member.filename)
+                        parsed = _documents_from_value(value, member.filename, url2text_mode=url2text_mode)
                     elif suffix == ".jsonl":
                         parsed = []
                         for index, line in enumerate(io.TextIOWrapper(binary_handle, encoding="utf-8", errors="replace")):
                             if line.strip():
-                                parsed.extend(_documents_from_value(json.loads(line), f"{member.filename}#{index}"))
+                                parsed.extend(
+                                    _documents_from_value(
+                                        json.loads(line), f"{member.filename}#{index}", url2text_mode=url2text_mode
+                                    )
+                                )
                     elif suffix in {".tsv", ".csv"}:
                         delimiter = "\t" if suffix == ".tsv" else ","
                         reader = csv.DictReader(io.TextIOWrapper(binary_handle, encoding="utf-8", errors="replace"), delimiter=delimiter)
-                        parsed = _documents_from_value(list(reader), member.filename)
+                        parsed = _documents_from_value(list(reader), member.filename, url2text_mode=url2text_mode)
                     else:
                         parsed = []
                 if parsed:
@@ -172,11 +203,16 @@ def normalize_zip_to_documents(archive_path: str | Path) -> tuple[list[dict[str,
     audit["recognized_member_counts"] = dict(sorted(audit["recognized_member_counts"].items()))
     audit["normalized_document_count"] = len(documents)
     audit["documents_with_url"] = sum(bool(document.get("url")) for document in documents)
+    audit["url2text_mode"] = url2text_mode
     return documents, audit
 
 
 def normalize_zip_to_jsonl(
-    archive_path: str | Path, output_path: str | Path, *, max_documents: int | None = None
+    archive_path: str | Path,
+    output_path: str | Path,
+    *,
+    max_documents: int | None = None,
+    url2text_mode: str = "sentence",
 ) -> dict[str, Any]:
     """Write recognized archive records to JSONL without retaining the corpus in RAM.
 
@@ -187,6 +223,8 @@ def normalize_zip_to_jsonl(
     """
     if max_documents is not None and max_documents < 1:
         raise ValueError("max_documents must be positive when supplied")
+    if url2text_mode not in {"sentence", "source_document"}:
+        raise ValueError("url2text_mode must be 'sentence' or 'source_document'")
     source = Path(archive_path)
     destination = Path(output_path)
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -196,6 +234,7 @@ def normalize_zip_to_jsonl(
         "recognized_member_counts": Counter(),
         "skipped_member_samples": [],
         "max_documents": max_documents,
+        "url2text_mode": url2text_mode,
     }
     normalized_document_count = 0
     stopped_early = False
@@ -217,26 +256,38 @@ def normalize_zip_to_jsonl(
                             # as a generic format.
                             content = text_handle.read()
                             try:
-                                parsed_rows = _documents_from_value(json.loads(content), member.filename)
+                                parsed_rows = _documents_from_value(
+                                    json.loads(content), member.filename, url2text_mode=url2text_mode
+                                )
                                 row_iterator = iter(parsed_rows)
                             except json.JSONDecodeError:
                                 def json_rows_with_json_suffix() -> Any:
                                     for index, line in enumerate(content.splitlines()):
                                         if line.strip():
-                                            yield from _documents_from_value(json.loads(line), f"{member.filename}#{index}")
+                                            yield from _documents_from_value(
+                                                json.loads(line),
+                                                f"{member.filename}#{index}",
+                                                url2text_mode=url2text_mode,
+                                            )
                                 row_iterator = json_rows_with_json_suffix()
                         elif suffix == ".jsonl":
                             def jsonl_rows() -> Any:
                                 for index, line in enumerate(text_handle):
                                     if line.strip():
-                                        yield from _documents_from_value(json.loads(line), f"{member.filename}#{index}")
+                                        yield from _documents_from_value(
+                                            json.loads(line),
+                                            f"{member.filename}#{index}",
+                                            url2text_mode=url2text_mode,
+                                        )
                             row_iterator = jsonl_rows()
                         elif suffix in {".tsv", ".csv"}:
                             delimiter = "\t" if suffix == ".tsv" else ","
                             reader = csv.DictReader(text_handle, delimiter=delimiter)
                             def tabular_rows() -> Any:
                                 for index, row in enumerate(reader):
-                                    yield from _documents_from_value(row, f"{member.filename}#{index}")
+                                    yield from _documents_from_value(
+                                        row, f"{member.filename}#{index}", url2text_mode=url2text_mode
+                                    )
                             row_iterator = tabular_rows()
                         else:
                             row_iterator = iter(())

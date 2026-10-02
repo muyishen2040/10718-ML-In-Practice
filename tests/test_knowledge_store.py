@@ -72,3 +72,21 @@ def test_streaming_normalizer_handles_official_averitec_per_claim_jsonl(tmp_path
     inspection = inspect_zip_archive(archive_path)
     assert inspection["sample_members"][0]["jsonl_with_json_suffix"] is True
     assert inspection["sample_members"][0]["json_keys"] == ["url", "url2text"]
+
+
+def test_streaming_normalizer_can_join_averitec_sentences_by_source_document(tmp_path) -> None:
+    archive_path = tmp_path / "knowledge.zip"
+    output_path = tmp_path / "documents.jsonl"
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        archive.writestr(
+            "output_dev/7.json",
+            json.dumps({"url": "https://example.org", "url2text": ["first sentence", "second sentence"]}) + "\n",
+        )
+
+    audit = normalize_zip_to_jsonl(archive_path, output_path, url2text_mode="source_document")
+    documents = read_jsonl(output_path)
+
+    assert audit["normalized_document_count"] == 1
+    assert audit["url2text_mode"] == "source_document"
+    assert documents[0]["text"] == "first sentence\nsecond sentence"
+    assert documents[0]["metadata"]["source_format"] == "averitec_url2text_source_document"
