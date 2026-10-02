@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -22,17 +22,25 @@ OFFICIAL_ARCHIVES = {
 
 
 def download_with_progress(url: str, destination: Path) -> None:
-    """Download in chunks so Colab can show byte-level progress."""
+    """Download in chunks and resume a server-supported partial download."""
     partial = destination.with_suffix(f"{destination.suffix}.partial")
-    if partial.exists():
-        raise FileExistsError(
-            f"Found incomplete download {partial}. Remove it explicitly before retrying so no partial archive is mistaken for complete."
-        )
-    with urlopen(url) as response:
+    existing_bytes = partial.stat().st_size if partial.exists() else 0
+    request = Request(url, headers={"Range": f"bytes={existing_bytes}-"}) if existing_bytes else Request(url)
+    with urlopen(request) as response:
+        if existing_bytes and getattr(response, "status", None) != 206:
+            raise RuntimeError(
+                f"Server did not honor resume request for {partial}. Delete that partial file explicitly and retry."
+            )
         content_length = response.headers.get("Content-Length")
-        total_bytes = int(content_length) if content_length and content_length.isdigit() else None
-        with partial.open("xb") as output, progress(
-            total=total_bytes, description="Downloading AVeriTeC archive", unit="B", unit_scale=True
+        remaining_bytes = int(content_length) if content_length and content_length.isdigit() else None
+        total_bytes = existing_bytes + remaining_bytes if remaining_bytes is not None else None
+        mode = "ab" if existing_bytes else "xb"
+        with partial.open(mode) as output, progress(
+            total=total_bytes,
+            initial=existing_bytes,
+            description="Downloading AVeriTeC archive",
+            unit="B",
+            unit_scale=True,
         ) as bar:
             while chunk := response.read(1024 * 1024):
                 output.write(chunk)

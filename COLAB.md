@@ -174,6 +174,30 @@ same order before calling `build_averitec_passage_corpus.py --split train`:
 The claim-only and gold modes are diagnostics. `gold` is capped at three
 annotated answers; `gold_all` is an explicitly non-deployable oracle bound.
 
+### Recommended train path: checkpointable archive-to-BM25 streaming
+
+For the v2 retrieved-evidence logistic-regression experiment, do **not** build
+or concatenate a giant train corpus. `run_averitec_archive_bm25.py` reads one
+official archive member (one candidate pool) at a time, applies the same
+`source_document` plus 160/40 chunking used by v2 dev, and appends each train
+claim's top-20 ranking immediately. Save its output directory on Drive and
+rerun with `--resume` after any interruption. Process one archive shard at a
+time, then finalize only after all three completed:
+
+```python
+!python scripts/run_averitec_archive_bm25.py \
+  --archive "{ARCHIVE_LOCAL}" --data-root "{PERSIST_ROOT_V2}" \
+  --output-dir "{PERSIST_ROOT_V2}/outputs/bm25" --run-name train_bm25_top20_v2 \
+  --ranking-k 20 --max-words 160 --overlap-words 40 --checkpoint-every 1 --resume
+```
+
+After all shards have been processed, rerun once with all three `--archive`
+arguments and `--finalize`. This creates `train_rankings.jsonl`, which can be
+used with dev v2 rankings by `train_tfidf_logreg.py --evidence-mode retrieved`.
+The archive downloader also resumes a server-supported `.partial` download;
+save archives on Drive and copy one completed shard to fast local storage for
+the corresponding BM25 pass.
+
 ### Fast verifier diagnostic: TF-IDF + logistic regression with gold evidence
 
 This run needs only the compact train/dev claim files, not the train knowledge

@@ -69,6 +69,10 @@ This section is the concise source of truth for current progress.
    its audit; then run URL-based evidence Hit@3/MRR and the BM25 +
    TF-IDF/logistic-regression end-to-end baseline. The train corpus requires
    all three large official train shards.
+   For the train baseline, use the checkpointable archive-to-BM25 streaming
+   runner rather than materializing a combined train corpus: it preserves the
+   v2 source-document/160-word protocol while appending completed claim
+   rankings to Drive for `--resume` recovery.
 2. Run the zero-shot LLM baseline with a frozen prompt, recorded exact model
    ID/version, deterministic settings where available, and saved raw outputs.
 3. Add dense retrieval, ModernBERT, Laya, calibration, and the evidence-aware
