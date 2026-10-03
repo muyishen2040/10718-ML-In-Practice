@@ -84,11 +84,40 @@ def load_qrels(path: Path) -> dict[str, list[str]]:
 
 
 def load_checkpoint_rankings(path: Path, *, known_claim_ids: set[str]) -> dict[str, dict[str, Any]]:
-    """Load completed claim rankings from an interrupted run's append-only checkpoint."""
+    """Load completed rankings, repairing at most one interrupted final JSONL row.
+
+    A Colab interruption can leave the final append-only checkpoint record only
+    partially written.  That record cannot safely be resumed by simply appending
+    another JSON object, because both records would share a line.  We therefore
+    discard a malformed *last non-empty* line and rerun its claim.  Corruption in
+    any earlier record remains a hard error rather than being silently hidden.
+    """
     if not path.exists():
         return {}
+
+    contents = path.read_bytes()
+    lines = contents.splitlines(keepends=True)
+    last_nonempty_line_index = max((index for index, line in enumerate(lines) if line.strip()), default=None)
     completed: dict[str, dict[str, Any]] = {}
-    for row in read_jsonl(path):
+    byte_offset = 0
+    for line_index, raw_line in enumerate(lines):
+        line_start = byte_offset
+        byte_offset += len(raw_line)
+        if not raw_line.strip():
+            continue
+        try:
+            row = json.loads(raw_line.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            if line_index != last_nonempty_line_index:
+                raise ValueError(
+                    f"Checkpoint {path} is corrupt before its final record at line {line_index + 1}."
+                ) from error
+            path.write_bytes(contents[:line_start])
+            print(
+                f"Warning: removed malformed final checkpoint record from {path}; "
+                "its claim will be rerun."
+            )
+            break
         claim_id = str(row.get("claim_id") or "")
         if claim_id not in known_claim_ids:
             raise ValueError(f"Checkpoint {path} contains an unknown claim ID: {claim_id!r}")
