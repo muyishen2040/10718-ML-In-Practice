@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from uuid import uuid4
 from pathlib import Path
 from typing import Any
 
@@ -129,6 +130,65 @@ def load_checkpoint_rankings(path: Path, *, known_claim_ids: set[str]) -> dict[s
     return completed
 
 
+def repair_checkpoint_rankings(path: Path, *, known_claim_ids: set[str]) -> dict[str, Any]:
+    """Back up and rebuild a checkpoint after malformed JSONL records are found.
+
+    This intentionally repairs only JSON decoding/UTF-8 failures. Parsed rows
+    with unknown or duplicate claim IDs still raise, because silently choosing
+    between those rankings could change the experiment. The original file is
+    retained beside the repaired checkpoint before any replacement occurs.
+    """
+    if not path.exists():
+        return {"repaired": False, "valid_row_count": 0, "dropped_line_numbers": [], "backup_path": None}
+
+    valid_rows: list[dict[str, Any]] = []
+    dropped_line_numbers: list[int] = []
+    seen_claim_ids: set[str] = set()
+    with path.open("rb") as handle:
+        for line_number, raw_line in enumerate(handle, start=1):
+            if not raw_line.strip():
+                continue
+            try:
+                row = json.loads(raw_line.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                dropped_line_numbers.append(line_number)
+                continue
+            claim_id = str(row.get("claim_id") or "")
+            if claim_id not in known_claim_ids:
+                raise ValueError(f"Checkpoint {path} contains an unknown claim ID: {claim_id!r}")
+            if claim_id in seen_claim_ids:
+                raise ValueError(f"Checkpoint {path} contains duplicate claim ID: {claim_id!r}")
+            if not isinstance(row.get("retrieved"), list):
+                raise ValueError(f"Checkpoint {path} has malformed ranking for claim {claim_id!r}")
+            seen_claim_ids.add(claim_id)
+            valid_rows.append(row)
+
+    if not dropped_line_numbers:
+        return {
+            "repaired": False,
+            "valid_row_count": len(valid_rows),
+            "dropped_line_numbers": [],
+            "backup_path": None,
+        }
+
+    backup_path = path.with_name(f"{path.name}.before_repair.{uuid4().hex}.bak")
+    backup_path.write_bytes(path.read_bytes())
+    temporary_path = path.with_name(f".{path.name}.{uuid4().hex}.repair.tmp")
+    try:
+        write_jsonl(valid_rows, temporary_path)
+        temporary_path.replace(path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+    report = {
+        "repaired": True,
+        "valid_row_count": len(valid_rows),
+        "dropped_line_numbers": dropped_line_numbers,
+        "backup_path": str(backup_path),
+    }
+    print(json.dumps({"checkpoint_repair": report}, indent=2))
+    return report
+
+
 def append_checkpoint_rows(path: Path, rows: list[dict[str, Any]]) -> None:
     """Durably make a small batch of completed rankings available for --resume."""
     if not rows:
@@ -152,6 +212,11 @@ def main() -> None:
     parser.add_argument("--ranking-k", type=int, help="Number of passages to save per claim; use 20 for the LLM reranking baseline.")
     parser.add_argument("--metric-k", type=int, help="Rank cutoff for retrieval metrics; normally 3 for the user-facing interface.")
     parser.add_argument("--resume", action="store_true", help="Resume an interrupted run from its checkpoint in this run directory.")
+    parser.add_argument(
+        "--repair-checkpoint",
+        action="store_true",
+        help="Back up and remove malformed JSONL checkpoint rows before resuming; valid rows are retained.",
+    )
     parser.add_argument("--checkpoint-every", type=int, default=10, help="Save completed rankings every N claims; 1 is safest but slower.")
     args = parser.parse_args()
     try:
@@ -175,6 +240,10 @@ def main() -> None:
         parser.error(f"Final rankings already exist at {ranking_path}. Use a new --run-name to preserve this result.")
     if checkpoint_path.exists() and not args.resume:
         parser.error(f"Interrupted-run checkpoint exists at {checkpoint_path}; rerun with --resume or use a new --run-name.")
+    if args.repair_checkpoint and not args.resume:
+        parser.error("--repair-checkpoint requires --resume.")
+    if args.repair_checkpoint:
+        repair_checkpoint_rankings(checkpoint_path, known_claim_ids=set(claim_by_id))
     completed_rankings = load_checkpoint_rankings(checkpoint_path, known_claim_ids=set(claim_by_id)) if args.resume else {}
     if completed_rankings:
         print(f"Resuming BM25: reusing {len(completed_rankings)} completed claim rankings.")

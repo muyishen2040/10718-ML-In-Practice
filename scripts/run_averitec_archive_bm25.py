@@ -18,7 +18,7 @@ from typing import Any, Iterable
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.run_bm25 import append_checkpoint_rows, load_checkpoint_rankings  # noqa: E402
+from scripts.run_bm25 import append_checkpoint_rows, load_checkpoint_rankings, repair_checkpoint_rankings  # noqa: E402
 from src.data.corpus import chunk_text  # noqa: E402
 from src.data.knowledge_store import _candidate_claim_index, _documents_from_value  # noqa: E402
 from src.data.schema import EvidenceItem  # noqa: E402
@@ -76,6 +76,11 @@ def main() -> None:
     parser.add_argument("--overlap-words", type=int, default=40)
     parser.add_argument("--checkpoint-every", type=int, default=1)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument(
+        "--repair-checkpoint",
+        action="store_true",
+        help="Back up and remove malformed JSONL checkpoint rows before resuming; valid rows are retained.",
+    )
     parser.add_argument("--finalize", action="store_true", help="Write final train_rankings.jsonl only after all three archive shards were processed.")
     args = parser.parse_args()
     if not args.archive and not args.finalize:
@@ -104,6 +109,10 @@ def main() -> None:
         parser.error(f"Final rankings already exist at {ranking_path}; use them directly rather than rerunning.")
     if checkpoint_path.exists() and not args.resume:
         parser.error(f"Found {checkpoint_path}; rerun with --resume.")
+    if args.repair_checkpoint and not args.resume:
+        parser.error("--repair-checkpoint requires --resume.")
+    if args.repair_checkpoint:
+        repair_checkpoint_rankings(checkpoint_path, known_claim_ids=set(claim_by_id))
     completed = load_checkpoint_rankings(checkpoint_path, known_claim_ids=set(claim_by_id)) if args.resume else {}
     pending: list[dict[str, Any]] = []
     passage_count = 0

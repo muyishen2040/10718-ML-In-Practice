@@ -67,3 +67,23 @@ def test_checkpoint_loader_rejects_mid_file_corruption(tmp_path) -> None:
         assert "corrupt before its final record" in str(error)
     else:
         raise AssertionError("Expected middle checkpoint corruption to be rejected")
+
+
+def test_checkpoint_repair_keeps_valid_rows_and_makes_backup(tmp_path) -> None:
+    checkpoint_path = tmp_path / "dev_rankings.partial.jsonl"
+    first = {"claim_id": "c1", "claim": "claim one", "retrieved": []}
+    second = {"claim_id": "c2", "claim": "claim two", "retrieved": []}
+    checkpoint_path.write_text(
+        json.dumps(first) + "\nnot-json\n" + json.dumps(second) + "\n", encoding="utf-8"
+    )
+
+    report = RUN_BM25.repair_checkpoint_rankings(checkpoint_path, known_claim_ids={"c1", "c2"})
+
+    assert report["repaired"] is True
+    assert report["valid_row_count"] == 2
+    assert report["dropped_line_numbers"] == [2]
+    assert Path(report["backup_path"]).read_text(encoding="utf-8").splitlines()[1] == "not-json"
+    assert RUN_BM25.load_checkpoint_rankings(checkpoint_path, known_claim_ids={"c1", "c2"}) == {
+        "c1": first,
+        "c2": second,
+    }
