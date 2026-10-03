@@ -79,7 +79,7 @@ def main() -> None:
     parser.add_argument(
         "--repair-checkpoint",
         action="store_true",
-        help="Back up and remove malformed JSONL checkpoint rows before resuming; valid rows are retained.",
+        help="Back up and remove malformed or identical duplicate checkpoint rows before resuming.",
     )
     parser.add_argument("--finalize", action="store_true", help="Write final train_rankings.jsonl only after all three archive shards were processed.")
     args = parser.parse_args()

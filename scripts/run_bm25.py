@@ -131,19 +131,21 @@ def load_checkpoint_rankings(path: Path, *, known_claim_ids: set[str]) -> dict[s
 
 
 def repair_checkpoint_rankings(path: Path, *, known_claim_ids: set[str]) -> dict[str, Any]:
-    """Back up and rebuild a checkpoint after malformed JSONL records are found.
+    """Back up and rebuild a checkpoint after malformed or duplicate JSONL rows.
 
     This intentionally repairs only JSON decoding/UTF-8 failures. Parsed rows
-    with unknown or duplicate claim IDs still raise, because silently choosing
-    between those rankings could change the experiment. The original file is
-    retained beside the repaired checkpoint before any replacement occurs.
+    with unknown IDs still raise. Identical duplicate claim rankings are removed;
+    conflicting duplicates still raise, because silently choosing between them
+    could change the experiment. The original file is retained beside the
+    repaired checkpoint before any replacement occurs.
     """
     if not path.exists():
         return {"repaired": False, "valid_row_count": 0, "dropped_line_numbers": [], "backup_path": None}
 
     valid_rows: list[dict[str, Any]] = []
     dropped_line_numbers: list[int] = []
-    seen_claim_ids: set[str] = set()
+    dropped_duplicate_line_numbers: list[int] = []
+    rows_by_claim_id: dict[str, dict[str, Any]] = {}
     with path.open("rb") as handle:
         for line_number, raw_line in enumerate(handle, start=1):
             if not raw_line.strip():
@@ -156,18 +158,26 @@ def repair_checkpoint_rankings(path: Path, *, known_claim_ids: set[str]) -> dict
             claim_id = str(row.get("claim_id") or "")
             if claim_id not in known_claim_ids:
                 raise ValueError(f"Checkpoint {path} contains an unknown claim ID: {claim_id!r}")
-            if claim_id in seen_claim_ids:
-                raise ValueError(f"Checkpoint {path} contains duplicate claim ID: {claim_id!r}")
             if not isinstance(row.get("retrieved"), list):
                 raise ValueError(f"Checkpoint {path} has malformed ranking for claim {claim_id!r}")
-            seen_claim_ids.add(claim_id)
+            existing = rows_by_claim_id.get(claim_id)
+            if existing is not None:
+                if row != existing:
+                    raise ValueError(
+                        f"Checkpoint {path} contains conflicting duplicate claim ID {claim_id!r} "
+                        f"at line {line_number}."
+                    )
+                dropped_duplicate_line_numbers.append(line_number)
+                continue
+            rows_by_claim_id[claim_id] = row
             valid_rows.append(row)
 
-    if not dropped_line_numbers:
+    if not dropped_line_numbers and not dropped_duplicate_line_numbers:
         return {
             "repaired": False,
             "valid_row_count": len(valid_rows),
             "dropped_line_numbers": [],
+            "dropped_duplicate_line_numbers": [],
             "backup_path": None,
         }
 
@@ -183,6 +193,7 @@ def repair_checkpoint_rankings(path: Path, *, known_claim_ids: set[str]) -> dict
         "repaired": True,
         "valid_row_count": len(valid_rows),
         "dropped_line_numbers": dropped_line_numbers,
+        "dropped_duplicate_line_numbers": dropped_duplicate_line_numbers,
         "backup_path": str(backup_path),
     }
     print(json.dumps({"checkpoint_repair": report}, indent=2))
@@ -215,7 +226,7 @@ def main() -> None:
     parser.add_argument(
         "--repair-checkpoint",
         action="store_true",
-        help="Back up and remove malformed JSONL checkpoint rows before resuming; valid rows are retained.",
+        help="Back up and remove malformed or identical duplicate checkpoint rows before resuming.",
     )
     parser.add_argument("--checkpoint-every", type=int, default=10, help="Save completed rankings every N claims; 1 is safest but slower.")
     args = parser.parse_args()

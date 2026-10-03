@@ -87,3 +87,40 @@ def test_checkpoint_repair_keeps_valid_rows_and_makes_backup(tmp_path) -> None:
         "c1": first,
         "c2": second,
     }
+
+
+def test_checkpoint_repair_removes_only_identical_duplicate_rows(tmp_path) -> None:
+    checkpoint_path = tmp_path / "dev_rankings.partial.jsonl"
+    first = {"claim_id": "c1", "claim": "claim one", "retrieved": []}
+    second = {"claim_id": "c2", "claim": "claim two", "retrieved": []}
+    checkpoint_path.write_text(
+        json.dumps(first) + "\n" + json.dumps(first) + "\n" + json.dumps(second) + "\n", encoding="utf-8"
+    )
+
+    report = RUN_BM25.repair_checkpoint_rankings(checkpoint_path, known_claim_ids={"c1", "c2"})
+
+    assert report["repaired"] is True
+    assert report["dropped_line_numbers"] == []
+    assert report["dropped_duplicate_line_numbers"] == [2]
+    assert RUN_BM25.load_checkpoint_rankings(checkpoint_path, known_claim_ids={"c1", "c2"}) == {
+        "c1": first,
+        "c2": second,
+    }
+
+
+def test_checkpoint_repair_rejects_conflicting_duplicate_rows(tmp_path) -> None:
+    checkpoint_path = tmp_path / "dev_rankings.partial.jsonl"
+    checkpoint_path.write_text(
+        json.dumps({"claim_id": "c1", "claim": "first", "retrieved": []})
+        + "\n"
+        + json.dumps({"claim_id": "c1", "claim": "changed", "retrieved": []})
+        + "\n",
+        encoding="utf-8",
+    )
+
+    try:
+        RUN_BM25.repair_checkpoint_rankings(checkpoint_path, known_claim_ids={"c1"})
+    except ValueError as error:
+        assert "conflicting duplicate" in str(error)
+    else:
+        raise AssertionError("Expected conflicting duplicate rows to be rejected")
