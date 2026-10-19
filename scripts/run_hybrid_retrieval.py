@@ -15,6 +15,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from scripts.run_bm25 import load_qrels  # noqa: E402
 from src.retrieval.metrics import evaluate_rankings  # noqa: E402
 from src.utils.io import read_jsonl, write_jsonl  # noqa: E402
+from src.utils.progress import progress  # noqa: E402
 from src.utils.runs import resolve_run_directory, write_run_manifest  # noqa: E402
 
 
@@ -81,10 +82,13 @@ def main() -> None:
             f"BM25 and dense runs have different claim sets: {len(set(bm25) - set(dense))} BM25-only, "
             f"{len(set(dense) - set(bm25))} dense-only"
         )
-    rankings = [
-        fuse_rankings(bm25[claim_id], dense[claim_id], constant=args.rrf_constant, k=args.ranking_k)
-        for claim_id in bm25
-    ]
+    rankings = []
+    with progress(total=len(bm25), description="Hybrid RRF fusion", unit="claim") as bar:
+        for claim_id in bm25:
+            rankings.append(
+                fuse_rankings(bm25[claim_id], dense[claim_id], constant=args.rrf_constant, k=args.ranking_k)
+            )
+            bar.update(1)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     rankings_path = output_dir / "hybrid_rankings.jsonl"

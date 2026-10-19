@@ -387,6 +387,12 @@ cell with the same configuration and `--resume` to continue. Hybrid fusion is a
 small deterministic operation over the saved top-20 rankings and is safely
 recomputed if interrupted.
 
+Progress is visible in the notebook output: dense retrieval reports both the
+current claim and candidate passages embedded for that claim; hybrid fusion
+reports claims fused; transformer runs report tokenization batches and the
+Hugging Face optimizer-step bars. The notebook streams subprocess output rather
+than capturing it, so these bars remain visible while a cell is running.
+
 The notebook keeps the official test split untouched. Classifier tuning uses a
 stratified 10% holdout from official train only, selects by Macro-F1 (then false
 reassurance/false alarm as tie-breakers), refits on all available train claims,

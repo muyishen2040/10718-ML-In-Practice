@@ -79,6 +79,11 @@ def dense_top_k(
     top_rows: list[dict[str, Any]] = []
     batch: list[Any] = []
 
+    try:
+        candidate_count = len(candidates)  # type: ignore[arg-type]
+    except TypeError:
+        candidate_count = None
+
     def score_batch(items: list[Any]) -> None:
         if not items:
             return
@@ -100,12 +105,21 @@ def dense_top_k(
             key=lambda row: (-float(row["score"]), str(row["passage_id"])),
         )[:k]
 
-    for item in candidates:
-        batch.append(item)
-        if len(batch) >= batch_size:
-            score_batch(batch)
-            batch = []
-    score_batch(batch)
+    with progress(
+        total=candidate_count,
+        description="Embedding candidates",
+        unit="passage",
+        position=1,
+        leave=False,
+    ) as bar:
+        for item in candidates:
+            batch.append(item)
+            if len(batch) >= batch_size:
+                score_batch(batch)
+                bar.update(len(batch))
+                batch = []
+        score_batch(batch)
+        bar.update(len(batch))
     return top_rows
 
 
@@ -293,7 +307,9 @@ def main() -> None:
 
         if not args.corpus.is_file():
             raise FileNotFoundError(args.corpus)
-        with progress(total=len(claims), initial=len(completed), description="Dense dev retrieval", unit="claim") as bar:
+        # This loop visits every claim again on resume, so do not initialize the bar
+        # with completed claims as well as incrementing for them below.
+        with progress(total=len(claims), initial=0, description="Dense dev retrieval", unit="claim", position=0) as bar:
             try:
                 for candidate_claim_id, candidate_items in per_claim_candidate_groups(args.corpus):
                     claim = claim_by_id.get(candidate_claim_id)
@@ -302,6 +318,7 @@ def main() -> None:
                     if candidate_claim_id in completed:
                         bar.update(1)
                         continue
+                    bar.set_postfix(claim=candidate_claim_id)
                     processed_passage_count += len(candidate_items)
                     row = complete_claim_row(
                         claim,
@@ -319,11 +336,12 @@ def main() -> None:
             finally:
                 append_checkpoint_rows(checkpoint_path, pending)
                 pending = []
-        for claim in claims:
-            claim_id = str(claim["claim_id"])
-            if claim_id not in completed:
-                missing_pool_ids.append(claim_id)
-                checkpoint(complete_claim_row(claim, []))
+            for claim in claims:
+                claim_id = str(claim["claim_id"])
+                if claim_id not in completed:
+                    missing_pool_ids.append(claim_id)
+                    checkpoint(complete_claim_row(claim, []))
+                    bar.update(1)
         append_checkpoint_rows(checkpoint_path, pending)
         pending = []
         should_finalize = True
@@ -333,7 +351,7 @@ def main() -> None:
                 raise RuntimeError("Embedding model was not loaded for archive processing")
             from scripts.run_averitec_archive_bm25 import passages_from_documents
 
-            with progress(total=len(claims), initial=len(completed), description="Dense train retrieval", unit="claim") as bar:
+            with progress(total=len(claims), initial=len(completed), description="Dense train retrieval", unit="claim", position=0) as bar:
                 try:
                     for archive_path in args.archive:
                         if not archive_path.is_file():
@@ -350,6 +368,7 @@ def main() -> None:
                                 claim_id = str(claim["claim_id"])
                                 if claim_id in completed:
                                     continue
+                                bar.set_postfix(claim=claim_id)
                                 passages = passages_from_documents(
                                     documents_from_official_member(archive, member),
                                     claim_id,

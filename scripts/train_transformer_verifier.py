@@ -26,6 +26,7 @@ from scripts.train_tfidf_logreg import attach_retrieved_evidence  # noqa: E402
 from src.data.averitec import CANONICAL_LABELS  # noqa: E402
 from src.evaluation.classification import evaluate_predictions  # noqa: E402
 from src.utils.io import read_jsonl, write_json, write_jsonl  # noqa: E402
+from src.utils.progress import progress  # noqa: E402
 from src.utils.runs import resolve_run_directory, sha256_file, write_run_manifest  # noqa: E402
 
 
@@ -75,19 +76,24 @@ def compose_text(record: dict[str, Any], tokenizer: Any, claim_budget: int, evid
 class EncodedRecords(torch.utils.data.Dataset):
     def __init__(self, records: list[dict[str, Any]], tokenizer: Any, max_length: int, claim_budget: int, evidence_budget: int):
         self.records = records
-        texts = [compose_text(row, tokenizer, claim_budget, evidence_budget) for row in records]
-        encoded = tokenizer(
-            texts,
-            max_length=max_length,
-            truncation=True,
-            padding=False,
-            return_attention_mask=True,
-        )
         self.features = []
-        for index, record in enumerate(records):
-            feature = {key: values[index] for key, values in encoded.items()}
-            feature["labels"] = LABEL_TO_ID[str(record["label"])]
-            self.features.append(feature)
+        tokenization_batch_size = 128
+        with progress(total=len(records), description="Tokenizing claims", unit="claim", leave=False) as bar:
+            for start in range(0, len(records), tokenization_batch_size):
+                batch_records = records[start : start + tokenization_batch_size]
+                texts = [compose_text(row, tokenizer, claim_budget, evidence_budget) for row in batch_records]
+                encoded = tokenizer(
+                    texts,
+                    max_length=max_length,
+                    truncation=True,
+                    padding=False,
+                    return_attention_mask=True,
+                )
+                for index, record in enumerate(batch_records):
+                    feature = {key: values[index] for key, values in encoded.items()}
+                    feature["labels"] = LABEL_TO_ID[str(record["label"])]
+                    self.features.append(feature)
+                bar.update(len(batch_records))
 
     def __len__(self) -> int:
         return len(self.features)
@@ -328,6 +334,8 @@ def main() -> None:
             "weight_decay": 0.01,
             "warmup_ratio": 0.06,
             "logging_steps": 25,
+            "logging_first_step": True,
+            "disable_tqdm": False,
             "save_strategy": "steps",
             "save_steps": args.checkpoint_steps,
             "save_total_limit": 2,
