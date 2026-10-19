@@ -368,6 +368,8 @@ caused every classification outcome.
 
 The Drive-backed notebook for the next assignment is
 [`notebooks/initial_ml_solution_colab.ipynb`](notebooks/initial_ml_solution_colab.ipynb).
+For a clean rerun in a separate output directory, use
+[`notebooks/initial_ml_solution_colab_rerun.ipynb`](notebooks/initial_ml_solution_colab_rerun.ipynb).
 It runs four extensions on the same official AVeriTeC train/dev split:
 
 1. Pure BGE dense retrieval over each claim's complete candidate pool.
