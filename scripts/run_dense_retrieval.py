@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+import time
 import zipfile
 from pathlib import Path
 from typing import Any, Iterable
@@ -38,6 +40,12 @@ DEFAULT_QUERY_PREFIX = "Represent this sentence for searching relevant passages:
 
 
 def load_embedding_model(model_name: str, revision: str | None, device: str | None, max_seq_length: int):
+    started = time.monotonic()
+    print(
+        f"Importing sentence-transformers for {model_name} "
+        f"(HF_HOME={os.environ.get('HF_HOME', '<default>')})...",
+        flush=True,
+    )
     try:
         from sentence_transformers import SentenceTransformer
     except ImportError as error:
@@ -45,6 +53,7 @@ def load_embedding_model(model_name: str, revision: str | None, device: str | No
             "Dense retrieval requires sentence-transformers. Install requirements-colab.txt first."
         ) from error
 
+    print(f"Library import completed in {time.monotonic() - started:.1f}s; loading model weights...", flush=True)
     model = SentenceTransformer(
         model_name,
         revision=revision or None,
@@ -56,6 +65,11 @@ def load_embedding_model(model_name: str, revision: str | None, device: str | No
     auto_model = getattr(first_module, "auto_model", None)
     config = getattr(auto_model, "config", None)
     resolved_revision = getattr(config, "_commit_hash", None)
+    print(
+        f"Embedding model ready in {time.monotonic() - started:.1f}s "
+        f"(device={getattr(model, 'device', 'unknown')}).",
+        flush=True,
+    )
     return model, resolved_revision
 
 
