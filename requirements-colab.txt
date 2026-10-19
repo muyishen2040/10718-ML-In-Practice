@@ -1,3 +1,6 @@
 -r requirements.txt
+sentence-transformers>=3.4,<6
+transformers>=4.51,<5
+accelerate>=1,<2
 openai>=2,<3
 tqdm>=4,<5

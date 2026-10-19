@@ -26,3 +26,12 @@ def write_jsonl(rows: Iterable[dict[str, Any]], path: str | Path) -> None:
     with destination.open("w", encoding="utf-8", newline="\n") as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def write_json(data: dict[str, Any], path: str | Path) -> None:
+    """Atomically replace a small JSON artifact after a complete write."""
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(f"{destination.name}.tmp")
+    temporary.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    temporary.replace(destination)

@@ -363,3 +363,32 @@ The coverage file labels each claim as `evidence_covered`, `evidence_missed`,
 or `unjudged`. The conditioned metrics compare verdict quality for the first
 two groups; treat the comparison as a diagnostic, not proof that retrieval
 caused every classification outcome.
+
+## 9. Initial ML Solution experiments
+
+The Drive-backed notebook for the next assignment is
+[`notebooks/initial_ml_solution_colab.ipynb`](notebooks/initial_ml_solution_colab.ipynb).
+It runs four extensions on the same official AVeriTeC train/dev split:
+
+1. Pure BGE dense retrieval over each claim's complete candidate pool.
+2. BM25 + dense reciprocal-rank fusion (RRF) retrieval.
+3. A fine-tuned DistilBERT verifier using BM25 top-three evidence.
+4. The same verifier using hybrid top-three evidence.
+
+Before opening it in Colab, push the code/notebook commit to the linked GitHub
+repository; the bootstrap cell clones or fast-forwards that repository. Mount
+Drive and use the notebook's default v2 data root. The dense runner checkpoints
+each completed claim to a `.partial.jsonl` file on Drive; on reconnect rerun the
+interrupted cell with the same run name and `--resume`. An interrupted claim is
+recomputed, while completed claims are skipped. It does not persist a 16-million-
+vector embedding matrix, which would consume substantial Drive space. Training
+checkpoints are also written to Drive every 100 optimizer steps; rerun the same
+cell with the same configuration and `--resume` to continue. Hybrid fusion is a
+small deterministic operation over the saved top-20 rankings and is safely
+recomputed if interrupted.
+
+The notebook keeps the official test split untouched. Classifier tuning uses a
+stratified 10% holdout from official train only, selects by Macro-F1 (then false
+reassurance/false alarm as tie-breakers), refits on all available train claims,
+and evaluates on dev. Retrieval continues to use the annotated-source URL proxy,
+not exact passage-level relevance labels.

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import platform
 import re
 import subprocess
@@ -11,6 +10,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from src.utils.io import write_json
 
 
 _RUN_NAME_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*$")
@@ -69,5 +70,5 @@ def write_run_manifest(
     }
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    write_json(manifest, target)
     return manifest
