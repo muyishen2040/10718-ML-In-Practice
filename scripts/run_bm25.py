@@ -330,7 +330,9 @@ def main() -> None:
         rankings = [rankings_by_claim_id[str(claim["claim_id"])] for claim in claims]
         retrieval_scope = "global_static_corpus"
 
-    write_jsonl(rankings, ranking_path)
+    temporary_rankings = ranking_path.with_name(f"{ranking_path.name}.tmp")
+    write_jsonl(rankings, temporary_rankings)
+    temporary_rankings.replace(ranking_path)
     checkpoint_path.unlink(missing_ok=True)
 
     qrels_path = args.qrels or processed / f"{args.split}_qrels.jsonl"

@@ -157,6 +157,7 @@ def main() -> None:
                         bar.update(1)
                 finally:
                     append_checkpoint_rows(checkpoint_path, pending)
+                    pending = []
 
     report: dict[str, Any] = {
         "split": "train",
@@ -177,7 +178,9 @@ def main() -> None:
                 f"Cannot finalize: {len(missing)} prepared train claims lack rankings, e.g. {missing[:5]}. "
                 "Run all three official archive shards with --resume first."
             )
-        write_jsonl((completed[str(row["claim_id"])] for row in claims), ranking_path)
+        temporary_rankings = ranking_path.with_name(f"{ranking_path.name}.tmp")
+        write_jsonl((completed[str(row["claim_id"])] for row in claims), temporary_rankings)
+        temporary_rankings.replace(ranking_path)
         checkpoint_path.unlink(missing_ok=True)
         report["finalized"] = True
         report["rankings_path"] = str(ranking_path)

@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from scripts.supervised_rerank_common import normalized_bm25, proxy_hit, rerank, weak_labels
+from scripts.prepare_answer_aligned_labels import align_claim
 from scripts.train_cross_encoder_weak import training_pairs
 from scripts.train_projection_reranker import cache_embeddings, fit_projection, projected_scores
 
@@ -43,6 +44,23 @@ def test_cross_encoder_hard_negative_budget_is_per_claim():
     assert [pair[2] for pair in pairs] == [1.0, 0.0, 1.0, 0.0]
     assert pairs[1][1] == "red sky"
     assert pairs[3][1] == "blue stars"
+
+
+def test_answer_alignment_uses_gold_only_for_train_labels():
+    ranking = {"claim_id": "train:1", "claim": "The red moon was seen", "retrieved": [
+        {"passage_id": "wrong", "text": "The moon was blue in the photo", "url": "https://cited.example", "score": 4.0},
+        {"passage_id": "right", "text": "The red moon photograph was taken in 2014", "url": "https://cited.example/", "score": 3.0},
+        {"passage_id": "negative", "text": "The moon was red", "url": "https://other.example", "score": 2.0},
+    ]}
+    claim = {"claim_id": "train:1", "source_urls": ["https://cited.example"], "evidence": [
+        {"url": "https://cited.example", "text": "The photograph was taken in 2014", "metadata": {"question": "When was the photograph taken?"}},
+    ]}
+    aligned = align_claim(claim, ranking, 3, 0.15, 2)
+    assert aligned["positive_passage_id"] == "right"
+    pairs = training_pairs([ranking], {"train:1": claim}, [0], top_n=3, negatives=1,
+                           positive_ids={"train:1": aligned["positive_passage_id"]})
+    assert pairs == [(ranking["claim"], ranking["retrieved"][1]["text"], 1.0),
+                     (ranking["claim"], ranking["retrieved"][2]["text"], 0.0)]
 
 
 class FakeEncoder:

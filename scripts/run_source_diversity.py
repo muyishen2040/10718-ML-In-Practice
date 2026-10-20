@@ -1,8 +1,8 @@
-"""Deterministically prefer distinct source URLs within saved BM25 top-20.
+"""Deterministically prefer distinct source URLs within saved top-N rankings.
 
 The selector does not read labels or relevance judgments. Qrels are used only
 for dev evaluation after rankings are frozen. It cannot recover a source that
-is missing from the first-stage top-20 candidate list.
+is missing from the first-stage candidate list.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from src.utils.runs import resolve_run_directory, sha256_file, write_run_manifes
 
 
 def diversify_row(row: dict[str, Any], max_candidates: int = 20) -> dict[str, Any]:
-    """Keep the best chunk per URL first, then append duplicates in BM25 order.
+    """Keep the highest-ranked chunk per URL first, then append duplicates in input order.
 
     An absent/invalid URL is keyed by passage ID so unrelated unknown sources
     are not accidentally collapsed. The output preserves every input candidate.

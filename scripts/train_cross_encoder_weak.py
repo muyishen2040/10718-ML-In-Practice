@@ -1,4 +1,4 @@
-"""Fine-tune a small cross-encoder on weak source-URL labels.
+"""Fine-tune a small cross-encoder on train-only source or answer-aligned labels.
 
 Selection uses a train-only claim holdout. The full-fit model reranks dev;
 two held-out-fold models build leakage-safe *train* rankings for a matched
@@ -22,7 +22,7 @@ from scripts.run_bm25 import append_checkpoint_rows, load_checkpoint_rankings  #
 from scripts.supervised_rerank_common import (  # noqa: E402
     annotated_train_split, dev_metrics, load_inputs, proxy_hit, rerank, weak_labels,
 )
-from src.utils.io import write_json, write_jsonl  # noqa: E402
+from src.utils.io import read_jsonl, write_json, write_jsonl  # noqa: E402
 from src.utils.progress import progress  # noqa: E402
 from src.utils.runs import resolve_run_directory, sha256_file, write_run_manifest  # noqa: E402
 
@@ -40,14 +40,18 @@ def ensure_checkpoint_newline(path: Path) -> None:
             handle.write(b"\n")
 
 
-def training_pairs(rows, claims, indices, top_n: int, negatives: int):
-    """Select top weak positive and BM25-hard negatives per eligible claim."""
+def training_pairs(rows, claims, indices, top_n: int, negatives: int, positive_ids=None):
+    """Select one train positive and BM25-hard negatives per eligible claim."""
     pairs = []
     for index in indices:
         row = rows[index]
         candidates = row.get("retrieved", [])[:top_n]
         labels = weak_labels(row, claims[str(row["claim_id"])], top_n)
-        positive = next((item for item, label in zip(candidates, labels, strict=True) if label), None)
+        if positive_ids is None:
+            positive = next((item for item, label in zip(candidates, labels, strict=True) if label), None)
+        else:
+            selected_id = positive_ids.get(str(row["claim_id"]))
+            positive = next((item for item in candidates if str(item["passage_id"]) == selected_id), None)
         if positive is None:
             continue
         pairs.append((str(row["claim"]), str(positive.get("text") or ""), 1.0))
@@ -74,7 +78,7 @@ def load_base(model_name: str, revision: str | None, device: str):
     return tokenizer, model.to(device), resolved
 
 
-def fit_model(rows, claims, indices, directory: Path, args, revision: str | None):
+def fit_model(rows, claims, indices, directory: Path, args, revision: str | None, positive_ids=None):
     """Resume exact next minibatch from a periodically saved optimizer state."""
     import torch
 
@@ -89,8 +93,8 @@ def fit_model(rows, claims, indices, directory: Path, args, revision: str | None
     if args.device.startswith("cuda"):
         torch.cuda.manual_seed_all(args.seed)
     tokenizer, model, _ = load_base(args.model, revision, args.device)
-    pairs = training_pairs(rows, claims, indices, args.top_n, args.negatives)
-    print(f"Training {directory.name}: {len(indices)} claims, {len(pairs)} weak pairs", flush=True)
+    pairs = training_pairs(rows, claims, indices, args.top_n, args.negatives, positive_ids)
+    print(f"Training {directory.name}: {len(indices)} claims, {len(pairs)} labeled pairs", flush=True)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=0.01)
     checkpoint = directory / "state.pt"
     start_epoch = cursor = step = 0
@@ -198,12 +202,22 @@ def score_rows(rows, tokenizer, model, args, blend: float, checkpoint: Path, lab
     return [completed[str(row["claim_id"])] for row in rows]
 
 
+def aligned_passage_hit(rows, positive_ids: dict[str, str], k: int = 3) -> tuple[float, int]:
+    eligible = [row for row in rows if str(row["claim_id"]) in positive_ids]
+    if not eligible:
+        raise ValueError("No aligned positive passages in the train-only validation set")
+    hits = sum(positive_ids[str(row["claim_id"])] in
+               {str(item["passage_id"]) for item in row.get("retrieved", [])[:k]} for row in eligible)
+    return hits / len(eligible), len(eligible)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--train-claims", type=Path, required=True)
     parser.add_argument("--train-rankings", type=Path, required=True)
     parser.add_argument("--dev-rankings", type=Path, required=True)
     parser.add_argument("--dev-qrels", type=Path, required=True)
+    parser.add_argument("--positive-labels", type=Path, help="Optional train-only answer-aligned passage IDs; replaces first URL-matched positive.")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--run-name", required=True)
     parser.add_argument("--model", default=DEFAULT_MODEL)
@@ -220,6 +234,7 @@ def main() -> None:
     parser.add_argument("--checkpoint-claims", type=int, default=20)
     parser.add_argument("--oof-folds", type=int, default=2)
     parser.add_argument("--seed", type=int, default=718)
+    parser.add_argument("--dev-only", action="store_true", help="Fit and score dev first; defer expensive out-of-fold train rankings.")
     args = parser.parse_args()
     if min(args.top_n, args.negatives, args.epochs, args.batch_size, args.inference_batch_size,
            args.max_seq_length, args.checkpoint_steps, args.checkpoint_claims, args.oof_folds) < 1:
@@ -230,7 +245,7 @@ def main() -> None:
     if args.device.startswith("cuda") and not torch.cuda.is_available():
         raise RuntimeError("CUDA unavailable; select a Colab GPU runtime")
     inputs = (args.train_claims, args.train_rankings, args.dev_rankings, args.dev_qrels)
-    for path in inputs:
+    for path in (*inputs, *((args.positive_labels,) if args.positive_labels else ())):
         if not path.is_file():
             raise FileNotFoundError(path)
     output = resolve_run_directory(args.output_dir, args.run_name)
@@ -241,16 +256,38 @@ def main() -> None:
               "batch_size": args.batch_size, "inference_batch_size": args.inference_batch_size,
               "max_seq_length": args.max_seq_length, "checkpoint_steps": args.checkpoint_steps,
               "checkpoint_claims": args.checkpoint_claims, "oof_folds": args.oof_folds, "seed": args.seed,
-              "blend_grid": [0.0, 0.25, 0.5, 0.75, 1.0]}
+              "blend_grid": [0.0, 0.25, 0.5, 0.75, 1.0],
+              "positive_labels_sha256": sha256_file(args.positive_labels) if args.positive_labels else None}
     config_path = output / "config.json"
-    if config_path.is_file() and json.loads(config_path.read_text(encoding="utf-8")) != config:
-        raise ValueError("Run settings changed; choose a new run name")
+    if config_path.is_file():
+        saved_config = json.loads(config_path.read_text(encoding="utf-8"))
+        # Existing URL-label runs predate the optional answer-alignment field.
+        saved_config.setdefault("positive_labels_sha256", None)
+        if saved_config != config:
+            raise ValueError("Run settings changed; choose a new run name")
     dev_path, train_path, metrics_path = (output / name for name in ("dev_rankings.jsonl", "train_oof_rankings.jsonl", "dev_metrics.json"))
+    if args.dev_only and dev_path.is_file() and metrics_path.is_file():
+        print(metrics_path.read_text(encoding="utf-8"))
+        return
     if dev_path.is_file() and train_path.is_file() and metrics_path.is_file():
         print(metrics_path.read_text(encoding="utf-8"))
         return
     write_json(config, config_path)
     train, dev, claims = load_inputs(*inputs[:3])
+    positive_ids = None
+    if args.positive_labels:
+        aligned = read_jsonl(args.positive_labels)
+        if len({str(row["claim_id"]) for row in aligned}) != len(aligned) or {str(row["claim_id"]) for row in aligned} != {str(row["claim_id"]) for row in train}:
+            raise ValueError("Answer-alignment rows must cover the exact unique train claim IDs")
+        positive_ids = {str(row["claim_id"]): str(row["positive_passage_id"]) for row in aligned if row.get("positive_passage_id")}
+        for row in train:
+            selected_id = positive_ids.get(str(row["claim_id"]))
+            if selected_id is None:
+                continue
+            candidates = row.get("retrieved", [])[:args.top_n]
+            gold = weak_labels(row, claims[str(row["claim_id"])], args.top_n)
+            if not any(str(item["passage_id"]) == selected_id and label for item, label in zip(candidates, gold, strict=True)):
+                raise ValueError(f"Aligned positive is absent from annotated source candidates: {row['claim_id']}")
     fit, val = annotated_train_split(train, claims, args.seed, 0.1)
     revision_path = output / "base_revision.json"
     saved_revision = json.loads(revision_path.read_text(encoding="utf-8"))["revision"] if revision_path.is_file() else None
@@ -260,18 +297,69 @@ def main() -> None:
         del initial
         torch.cuda.empty_cache() if args.device.startswith("cuda") else None
         write_json({"revision": revision}, revision_path)
-    tokenizer, selector = fit_model(train, claims, fit, output / "selection_fit", args, revision)
-    val_rows = [train[index] for index in val]
-    val_scores = [raw_scores(row, tokenizer, selector, args) for row in progress_iter(val_rows, "Validate reranker")]
-    trials = []
-    for blend in config["blend_grid"]:
-        ranked = [rerank(row, score, blend, args.top_n, "cross_encoder_score") for row, score in zip(val_rows, val_scores, strict=True)]
-        trials.append({"blend": blend, "validation_hit_at_3": proxy_hit(ranked, claims, args.top_n)})
-    selected = sorted(trials, key=lambda trial: (-trial["validation_hit_at_3"], trial["blend"]))[0]
-    write_json({"train_only_validation_claim_count": len(val), "trials": trials, "selected": selected}, output / "selection.json")
-    del selector
-    if args.device.startswith("cuda"):
-        torch.cuda.empty_cache()
+    selection_path = output / "selection.json"
+    if selection_path.is_file():
+        selection_report = json.loads(selection_path.read_text(encoding="utf-8"))
+        if selection_report.get("train_only_validation_claim_count") != len(val):
+            raise ValueError("Saved selection set does not match the current train split")
+        selected = selection_report["selected"]
+    else:
+        tokenizer, selector = fit_model(train, claims, fit, output / "selection_fit", args, revision, positive_ids)
+        val_rows = [train[index] for index in val]
+        val_scores = [raw_scores(row, tokenizer, selector, args) for row in progress_iter(val_rows, "Validate reranker")]
+        trials = []
+        for blend in config["blend_grid"]:
+            ranked = [rerank(row, score, blend, args.top_n, "cross_encoder_score") for row, score in zip(val_rows, val_scores, strict=True)]
+            trial = {"blend": blend, "validation_url_proxy_hit_at_3": proxy_hit(ranked, claims, args.top_n)}
+            if positive_ids is not None:
+                trial["validation_aligned_passage_hit_at_3"], trial["validation_aligned_claim_count"] = aligned_passage_hit(ranked, positive_ids)
+            trials.append(trial)
+        if positive_ids is None:
+            selected = sorted(trials, key=lambda trial: (-trial["validation_url_proxy_hit_at_3"], trial["blend"]))[0]
+        else:
+            selected = sorted(trials, key=lambda trial: (-trial["validation_aligned_passage_hit_at_3"],
+                                                          -trial["validation_url_proxy_hit_at_3"], trial["blend"]))[0]
+        write_json({"train_only_validation_claim_count": len(val), "trials": trials, "selected": selected}, selection_path)
+        del selector
+        if args.device.startswith("cuda"):
+            torch.cuda.empty_cache()
+    # Run the affordable dev pilot before optional OOF scoring of all train claims.
+    if not dev_path.is_file():
+        full_indices = sorted(fit + val)
+        full_tokenizer, full_model = fit_model(train, claims, full_indices, output / "full_fit", args, revision, positive_ids)
+        dev_ranked = score_rows(dev, full_tokenizer, full_model, args, selected["blend"],
+                                output / "dev_rankings.partial.jsonl", "Rerank dev")
+        temporary = dev_path.with_suffix(".jsonl.tmp")
+        write_jsonl(dev_ranked, temporary)
+        temporary.replace(dev_path)
+        del full_model
+        if args.device.startswith("cuda"):
+            torch.cuda.empty_cache()
+    else:
+        dev_ranked = read_jsonl(dev_path)
+
+    def write_report(oof_complete: bool) -> dict:
+        report = {**config, "selected": selected, "dev": dev_metrics(dev_ranked, args.dev_qrels),
+                  "bm25_reference": dev_metrics(dev, args.dev_qrels), "dev_rankings": str(dev_path),
+                  "train_oof_rankings": str(train_path) if oof_complete else None,
+                  "train_oof_fold_count": args.oof_folds if oof_complete else None,
+                  "answer_aligned_positive_claim_count": len(positive_ids) if positive_ids is not None else None,
+                  "oof_complete": oof_complete,
+                  "warning": "Train-only silver passage alignment; dev qrels are URL proxies. "
+                             "Dev labels were not used for selection. Matched train evidence requires OOF rankings."}
+        write_json(report, metrics_path)
+        input_paths = dict(zip(("train_claims", "train_rankings", "dev_rankings", "dev_qrels"), inputs, strict=True))
+        if args.positive_labels:
+            input_paths["positive_labels"] = args.positive_labels
+        write_run_manifest(output / "manifest.json", project_root=PROJECT_ROOT, config=report,
+                           input_paths=input_paths)
+        return report
+
+    if args.dev_only:
+        report = write_report(oof_complete=train_path.is_file())
+        print(json.dumps({"selected": selected, "dev": report["dev"], "bm25_reference": report["bm25_reference"],
+                          "oof_complete": report["oof_complete"]}, indent=2))
+        return
     # Every train claim is scored by a model that was fitted on *other* claims.
     global_oof_checkpoint = output / "train_oof_rankings.partial.jsonl"
     oof_completed = load_checkpoint_rankings(global_oof_checkpoint, known_claim_ids={str(row["claim_id"]) for row in train})
@@ -283,7 +371,7 @@ def main() -> None:
         heldout_rows = [train[int(index)] for index in heldout]
         if all(str(row["claim_id"]) in oof_completed for row in heldout_rows):
             continue
-        fold_tokenizer, fold_model = fit_model(train, claims, list(map(int, fit_fold)), output / f"oof_fold_{fold}", args, revision)
+        fold_tokenizer, fold_model = fit_model(train, claims, list(map(int, fit_fold)), output / f"oof_fold_{fold}", args, revision, positive_ids)
         # Separate fold checkpoints avoid ambiguous claim ownership on resume.
         fold_rows = score_rows(heldout_rows, fold_tokenizer, fold_model, args, selected["blend"],
                                output / f"oof_fold_{fold}.partial.jsonl", f"OOF fold {fold}")
@@ -308,24 +396,7 @@ def main() -> None:
         temporary = train_path.with_suffix(".jsonl.tmp")
         write_jsonl([oof_completed[str(row["claim_id"])] for row in train], temporary)
         temporary.replace(train_path)
-    full_indices = sorted(fit + val)
-    full_tokenizer, full_model = fit_model(train, claims, full_indices, output / "full_fit", args, revision)
-    if not dev_path.is_file():
-        dev_ranked = score_rows(dev, full_tokenizer, full_model, args, selected["blend"],
-                                output / "dev_rankings.partial.jsonl", "Rerank dev")
-        temporary = dev_path.with_suffix(".jsonl.tmp")
-        write_jsonl(dev_ranked, temporary)
-        temporary.replace(dev_path)
-    else:
-        from src.utils.io import read_jsonl
-        dev_ranked = read_jsonl(dev_path)
-    report = {**config, "selected": selected, "dev": dev_metrics(dev_ranked, args.dev_qrels),
-              "bm25_reference": dev_metrics(dev, args.dev_qrels), "dev_rankings": str(dev_path),
-              "train_oof_rankings": str(train_path), "train_oof_fold_count": args.oof_folds,
-              "warning": "Weak URL-proxy supervision. Dev labels were not used for selection; matched train evidence is out-of-fold."}
-    write_json(report, metrics_path)
-    write_run_manifest(output / "manifest.json", project_root=PROJECT_ROOT, config=report,
-                       input_paths=dict(zip(("train_claims", "train_rankings", "dev_rankings", "dev_qrels"), inputs, strict=True)))
+    report = write_report(oof_complete=True)
     print(json.dumps({"selected": selected, "dev": report["dev"], "bm25_reference": report["bm25_reference"]}, indent=2))
 
 
