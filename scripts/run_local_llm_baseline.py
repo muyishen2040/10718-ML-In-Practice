@@ -212,9 +212,9 @@ def build_cases(
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """Build an ordered inference set and report claims excluded from the gold oracle."""
     claims_by_id = {str(row["claim_id"]): row for row in claims}
-    if evidence_mode == "bm25_top3":
+    if evidence_mode in {"bm25_top3", "retrieved_top3"}:
         if rankings_path is None:
-            raise ValueError("--rankings is required for --evidence-mode bm25_top3.")
+            raise ValueError("--rankings is required for a retrieved top-three evidence mode.")
         cases = []
         for ranking in read_jsonl(rankings_path):
             claim_id = str(ranking["claim_id"])
@@ -245,12 +245,12 @@ def citation_validation_error(result: LLMVerdict, passages: list[dict[str, Any]]
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--claims", required=True, type=Path)
-    parser.add_argument("--rankings", type=Path, help="Required only for --evidence-mode bm25_top3.")
+    parser.add_argument("--rankings", type=Path, help="Required for bm25_top3 or retrieved_top3 evidence modes.")
     parser.add_argument("--model", default="Qwen/Qwen3-4B", help="Hugging Face model identifier; record this exact ID in the writeup.")
     parser.add_argument("--variant", choices=("classify_top3", "rerank_top20_and_classify"), default="classify_top3")
     parser.add_argument(
         "--evidence-mode",
-        choices=("claim_only", "bm25_top3", "gold_top3"),
+        choices=("claim_only", "bm25_top3", "retrieved_top3", "gold_top3"),
         default="bm25_top3",
         help="claim_only is a no-evidence diagnostic; gold_top3 is a non-deployable capped oracle diagnostic.",
     )
@@ -310,13 +310,13 @@ def main() -> None:
             if cached_row is not None:
                 predictions_by_claim[claim_id] = cached_row["parsed"]["prediction"]
                 invalid_citation_count += int(bool(cached_row.get("citation_validation_error")))
-                zero_passage_fallback_count += int(bool(cached_row.get("bm25_zero_passage_fallback")))
+                zero_passage_fallback_count += int(bool(cached_row.get("zero_passage_fallback") or cached_row.get("bm25_zero_passage_fallback")))
                 continue
             claim = case["claim"]
             passages = case["passages"]
             expected_passage_count = candidate_limit if args.evidence_mode == "bm25_top3" else None
-            no_bm25_passages = args.evidence_mode == "bm25_top3" and not passages
-            if claim is None or (expected_passage_count is not None and len(passages) != expected_passage_count and not no_bm25_passages):
+            no_retrieved_passages = args.evidence_mode in {"bm25_top3", "retrieved_top3"} and not passages
+            if claim is None or (expected_passage_count is not None and len(passages) != expected_passage_count and not no_retrieved_passages):
                 error = {
                     "claim_id": claim_id,
                     "status": "error",
@@ -327,10 +327,10 @@ def main() -> None:
                 bar.update(1)
                 continue
             try:
-                if args.evidence_mode == "claim_only" or no_bm25_passages:
+                if args.evidence_mode == "claim_only" or no_retrieved_passages:
                     system_prompt = CLAIM_ONLY_SYSTEM_PROMPT
                     user_prompt = build_claim_only_prompt(claim["claim"])
-                    if no_bm25_passages:
+                    if no_retrieved_passages:
                         zero_passage_fallback_count += 1
                 else:
                     system_prompt = SYSTEM_PROMPT
@@ -350,11 +350,11 @@ def main() -> None:
                     max_new_tokens=args.max_new_tokens,
                 )
                 citation_error = None
-                if args.evidence_mode in {"bm25_top3", "gold_top3"} and not no_bm25_passages:
+                if args.evidence_mode in {"bm25_top3", "retrieved_top3", "gold_top3"} and not no_retrieved_passages:
                     citation_error = citation_validation_error(result, passages, args.variant)
                     invalid_citation_count += int(citation_error is not None)
                 prediction = build_prediction(claim_id, claim.get("label"), result)
-                prediction["evidence_passage_ids"] = [] if args.evidence_mode == "claim_only" or no_bm25_passages else (
+                prediction["evidence_passage_ids"] = [] if args.evidence_mode == "claim_only" or no_retrieved_passages else (
                     [str(item["passage_id"]) for item in passages]
                     if args.evidence_mode == "gold_top3" or args.variant == "classify_top3"
                     else result.selected_passage_ids
@@ -370,7 +370,8 @@ def main() -> None:
                         "model_revision": model_revision,
                         "variant": args.variant,
                         "evidence_mode": args.evidence_mode,
-                        "bm25_zero_passage_fallback": no_bm25_passages,
+                        "bm25_zero_passage_fallback": no_retrieved_passages if args.evidence_mode == "bm25_top3" else False,
+                        "zero_passage_fallback": no_retrieved_passages,
                         "citation_validation_error": citation_error,
                         "prompt_sha256": prompt_sha256(system_prompt, user_prompt),
                         "candidate_passage_ids": [str(item["passage_id"]) for item in passages],
@@ -396,7 +397,7 @@ def main() -> None:
     write_jsonl(errors, args.output_dir / f"{output_stem}_errors.jsonl")
     metrics = evaluate_predictions(predictions) if predictions else {"claim_count": 0}
     coverage_artifacts: dict[str, str] = {}
-    if args.qrels and predictions and args.evidence_mode == "bm25_top3":
+    if args.qrels and predictions and args.evidence_mode in {"bm25_top3", "retrieved_top3"}:
         qrels = {
             str(row["claim_id"]): [str(value) for value in row.get("relevant_passage_ids") or []]
             for row in read_jsonl(args.qrels)
@@ -430,7 +431,8 @@ def main() -> None:
         "gold_evidence_cap": args.max_evidence if args.evidence_mode == "gold_top3" else None,
         "gold_evidence_missing_claim_count": len(gold_evidence_missing_claim_ids),
         "gold_evidence_missing_claim_samples": gold_evidence_missing_claim_ids[:10],
-        "bm25_zero_passage_fallback_count": zero_passage_fallback_count,
+        "bm25_zero_passage_fallback_count": zero_passage_fallback_count if args.evidence_mode == "bm25_top3" else None,
+        "retrieved_zero_passage_fallback_count": zero_passage_fallback_count if args.evidence_mode == "retrieved_top3" else None,
         "citation_validation_error_count": invalid_citation_count,
         "max_chars_per_passage": args.max_chars_per_passage,
         "successful_claim_count": successful_count,
@@ -456,8 +458,8 @@ def main() -> None:
         config={key: value for key, value in config.items() if key != "system_prompt"},
         input_paths={
             "claims": args.claims,
-            **({"rankings": args.rankings} if args.evidence_mode == "bm25_top3" and args.rankings else {}),
-            **({"qrels": args.qrels} if args.evidence_mode == "bm25_top3" and args.qrels else {}),
+            **({"rankings": args.rankings} if args.evidence_mode in {"bm25_top3", "retrieved_top3"} and args.rankings else {}),
+            **({"qrels": args.qrels} if args.evidence_mode in {"bm25_top3", "retrieved_top3"} and args.qrels else {}),
         },
     )
     print(json.dumps({**config, **metrics}, indent=2))

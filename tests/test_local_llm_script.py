@@ -1,6 +1,8 @@
 import importlib.util
 from pathlib import Path
 
+from src.utils.io import write_jsonl
+
 
 SCRIPT_PATH = Path(__file__).parents[1] / "scripts" / "run_local_llm_baseline.py"
 SPEC = importlib.util.spec_from_file_location("run_local_llm_baseline_script", SCRIPT_PATH)
@@ -107,6 +109,17 @@ def test_build_cases_supports_claim_only_and_capped_gold_evidence() -> None:
     assert claim_only_excluded == []
     assert [item["passage_id"] for item in gold_cases[0]["passages"]] == ["c1-g1"]
     assert gold_excluded == ["c2"]
+
+
+def test_build_cases_accepts_arbitrary_retrieved_top_three(tmp_path) -> None:
+    path = tmp_path / "rankings.jsonl"
+    write_jsonl([{"claim_id": "c1", "retrieved": [{"passage_id": "p1", "text": "Exact-source excerpt"}]}], path)
+    cases, excluded = LOCAL_LLM.build_cases(
+        claims=[{"claim_id": "c1", "claim": "one", "label": "Supported"}],
+        rankings_path=path, evidence_mode="retrieved_top3", max_evidence=3,
+    )
+    assert excluded == []
+    assert [item["passage_id"] for item in cases[0]["passages"]] == ["p1"]
 
 
 def test_invalid_top_three_citation_does_not_discard_verdict() -> None:
