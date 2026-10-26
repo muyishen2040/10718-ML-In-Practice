@@ -1,0 +1,10 @@
+# Keep Colab's CUDA-enabled torch installation. No sentence-transformers,
+# TensorFlow, vision or language-model quantization dependencies are needed.
+transformers==4.57.1
+accelerate>=1,<2
+sentencepiece>=0.2,<0.3
+protobuf>=4,<7
+numpy>=1.26,<3
+scikit-learn>=1.5,<2
+joblib>=1.4,<2
+tqdm>=4,<5

@@ -16,7 +16,6 @@ from typing import Any
 
 import numpy as np
 import torch
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -25,9 +24,11 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from scripts.train_tfidf_logreg import attach_retrieved_evidence  # noqa: E402
 from src.data.averitec import CANONICAL_LABELS  # noqa: E402
 from src.evaluation.classification import evaluate_predictions  # noqa: E402
+from src.evaluation.splits import selection_split  # noqa: E402
 from src.utils.io import read_jsonl, write_json, write_jsonl  # noqa: E402
 from src.utils.progress import progress  # noqa: E402
 from src.utils.runs import resolve_run_directory, sha256_file, write_run_manifest  # noqa: E402
+from src.utils.checkpoints import latest_complete_trainer_checkpoint  # noqa: E402
 
 
 LABEL_TO_ID = {label: index for index, label in enumerate(CANONICAL_LABELS)}
@@ -131,17 +132,7 @@ def read_json(path: Path) -> dict[str, Any] | None:
 
 def best_checkpoint(trial_dir: Path) -> str | None:
     """Return the newest complete Trainer checkpoint, ignoring torn Drive writes."""
-    required_state = ("trainer_state.json", "optimizer.pt", "scheduler.pt", "rng_state.pth")
-    valid: list[tuple[int, Path]] = []
-    for path in trial_dir.glob("checkpoint-*"):
-        try:
-            step = int(path.name.removeprefix("checkpoint-"))
-        except ValueError:
-            continue
-        has_model = any(path.glob("model*.safetensors")) or any(path.glob("pytorch_model*.bin"))
-        if has_model and all((path / name).is_file() for name in required_state):
-            valid.append((step, path))
-    return str(max(valid, default=(0, None), key=lambda pair: pair[0])[1]) if valid else None
+    return latest_complete_trainer_checkpoint(trial_dir)
 
 
 def main() -> None:
@@ -157,13 +148,19 @@ def main() -> None:
     parser.add_argument("--claim-token-budget", type=int, default=96)
     parser.add_argument("--evidence-token-budget", type=int, default=110)
     parser.add_argument("--validation-fraction", type=float, default=0.10)
+    parser.add_argument("--validation-policy", choices=("stratified", "temporal", "grouped"), default="stratified")
     parser.add_argument("--learning-rates", default="2e-5,5e-5")
     parser.add_argument("--epoch-grid", default="2,3")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--gradient-accumulation-steps", type=int, default=2)
     parser.add_argument("--checkpoint-steps", type=int, default=100)
     parser.add_argument("--seed", type=int, default=718)
+    parser.add_argument("--validation-seed", type=int, help="Fix the holdout while varying model-training seed; defaults to --seed.")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--class-weighting", choices=("balanced", "none"), default="balanced")
+    parser.add_argument("--selection-only", action="store_true", help="Stop after train-only holdout evaluation; do not refit or score dev.")
+    parser.add_argument("--refit-epoch-policy", choices=("requested", "best_checkpoint"), default="requested",
+                        help="Refit for the grid epoch count (legacy) or the epoch of the checkpoint actually selected on train holdout.")
     args = parser.parse_args()
 
     if args.max_length < 32 or args.claim_token_budget < 1 or args.evidence_token_budget < 1:
@@ -193,12 +190,8 @@ def main() -> None:
 
     train_records = attach_rankings(read_jsonl(train_path), args.train_rankings)
     eval_records = attach_rankings(read_jsonl(eval_path), args.eval_rankings)
-    train_indices, validation_indices = train_test_split(
-        np.arange(len(train_records)),
-        test_size=args.validation_fraction,
-        random_state=args.seed,
-        stratify=[row["label"] for row in train_records],
-    )
+    validation_seed = args.seed if args.validation_seed is None else args.validation_seed
+    train_indices, validation_indices = selection_split(train_records, args.validation_fraction, validation_seed, args.validation_policy)
     selection_train_records = [train_records[int(index)] for index in train_indices]
     validation_records = [train_records[int(index)] for index in validation_indices]
 
@@ -215,17 +208,26 @@ def main() -> None:
         "eval_rankings": str(args.eval_rankings),
         "eval_rankings_sha256": sha256_file(args.eval_rankings),
         "validation_fraction": args.validation_fraction,
-        "validation_seed": args.seed,
+        "validation_seed": validation_seed,
+        "training_seed": args.seed,
+        "validation_policy": args.validation_policy,
         "learning_rate_grid": learning_rates,
         "epoch_grid": epochs_grid,
         "batch_size": args.batch_size,
         "gradient_accumulation_steps": args.gradient_accumulation_steps,
         "checkpoint_steps": args.checkpoint_steps,
-        "loss": "inverse_frequency_weighted_cross_entropy",
-        "split_policy": "official train split with internal stratified validation; official dev evaluated after refit",
+        "loss": "inverse_frequency_weighted_cross_entropy" if args.class_weighting == "balanced" else "unweighted_cross_entropy",
+        "class_weighting": args.class_weighting,
+        "refit_epoch_policy": args.refit_epoch_policy,
+        "split_policy": f"official train split with internal {args.validation_policy} validation; official dev evaluated after refit",
     }
     config_path = output_dir / "transformer_run_config.json"
     existing_config = read_json(config_path)
+    if existing_config is not None:
+        existing_config.setdefault("class_weighting", "balanced")
+        existing_config.setdefault("refit_epoch_policy", "requested")
+        existing_config.setdefault("validation_policy", "stratified")
+        existing_config.setdefault("training_seed", existing_config.get("validation_seed", 718))
     if existing_config is not None and any(existing_config.get(key) != value for key, value in config.items()):
         raise ValueError(f"Run configuration in {config_path} differs; choose a new --run-name.")
     config = {**(existing_config or {}), **config}
@@ -235,7 +237,7 @@ def main() -> None:
 
     final_metrics_path = output_dir / "final_dev_metrics.json"
     final_predictions_path = output_dir / "final_dev_predictions.jsonl"
-    if final_metrics_path.exists() and final_predictions_path.exists():
+    if not args.selection_only and final_metrics_path.exists() and final_predictions_path.exists():
         manifest_path = output_dir / "transformer_manifest.json"
         if not manifest_path.is_file():
             selection_report = read_json(output_dir / "model_selection.json") or {}
@@ -296,7 +298,6 @@ def main() -> None:
     validation_dataset = EncodedRecords(
         validation_records, tokenizer, args.max_length, args.claim_token_budget, args.evidence_token_budget
     )
-    eval_dataset = EncodedRecords(eval_records, tokenizer, args.max_length, args.claim_token_budget, args.evidence_token_budget)
 
     counts = np.bincount(
         [LABEL_TO_ID[str(row["label"])] for row in selection_train_records], minlength=len(CANONICAL_LABELS)
@@ -304,6 +305,8 @@ def main() -> None:
     if np.any(counts == 0):
         raise ValueError(f"Internal training fold is missing one or more labels: counts={counts.tolist()}")
     class_weights = torch.tensor(len(selection_train_records) / (len(CANONICAL_LABELS) * counts), dtype=torch.float32)
+    if args.class_weighting == "none":
+        class_weights = torch.ones(len(CANONICAL_LABELS), dtype=torch.float32)
     trials_dir = output_dir / "trials"
     trials_dir.mkdir(parents=True, exist_ok=True)
     trial_rows: list[dict[str, Any]] = []
@@ -323,7 +326,7 @@ def main() -> None:
             write_json(config, config_path)
         return model
 
-    def train_arguments(path: Path, *, lr: float, epochs: int, select_best: bool) -> TrainingArguments:
+    def train_arguments(path: Path, *, lr: float, epochs: float, select_best: bool) -> TrainingArguments:
         common = {
             "output_dir": str(path),
             "learning_rate": lr,
@@ -403,10 +406,14 @@ def main() -> None:
                         }
                     )
                 metrics = evaluate_predictions(validation_predictions)
+                selected_checkpoint = trainer.state.best_model_checkpoint
+                checkpoint_state = read_json(Path(selected_checkpoint) / "trainer_state.json") if selected_checkpoint else None
                 summary = {
                     "trial": trial_name,
                     "learning_rate": learning_rate,
                     "epochs": epochs,
+                    "best_checkpoint": selected_checkpoint,
+                    "best_checkpoint_epoch": checkpoint_state.get("epoch") if checkpoint_state else None,
                     "selection_validation_claim_count": len(validation_records),
                     "macro_f1": metrics["macro_f1"],
                     "accuracy": metrics["accuracy"],
@@ -416,6 +423,9 @@ def main() -> None:
                 }
                 write_jsonl(validation_predictions, trial_dir / "validation_predictions.jsonl")
                 write_json(summary, summary_path)
+                del trainer
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
             trial_rows.append(summary)
 
     selected = sorted(
@@ -432,8 +442,24 @@ def main() -> None:
         "selection_metric": "validation macro-F1; ties broken by lower false reassurance, then lower false alarm",
         "selected_trial": selected,
         "all_trials": trial_rows,
+        "validation_policy": args.validation_policy,
+        "validation_seed": validation_seed,
+        "training_seed": args.seed,
+        "selection_train_claim_count": len(selection_train_records),
+        "selection_validation_claim_count": len(validation_records),
+        "selection_train_claim_ids": [r["claim_id"] for r in selection_train_records],
+        "selection_validation_claim_ids": [r["claim_id"] for r in validation_records],
     }
     write_json(selection_report, output_dir / "model_selection.json")
+    if args.selection_only:
+        print(json.dumps({k: v for k, v in selection_report.items() if not k.endswith("claim_ids")}, indent=2))
+        return
+
+    refit_epochs = float(selected["epochs"])
+    if args.refit_epoch_policy == "best_checkpoint":
+        if not selected.get("best_checkpoint_epoch"):
+            raise ValueError("Cached trial lacks best_checkpoint_epoch; use a new run name for best-checkpoint refitting.")
+        refit_epochs = float(selected["best_checkpoint_epoch"])
 
     final_dir = output_dir / "final_model"
     final_complete_path = output_dir / "final_train_complete.json"
@@ -445,10 +471,12 @@ def main() -> None:
             [LABEL_TO_ID[str(row["label"])] for row in train_records], minlength=len(CANONICAL_LABELS)
         )
         full_weights = torch.tensor(len(train_records) / (len(CANONICAL_LABELS) * full_counts), dtype=torch.float32)
+        if args.class_weighting == "none":
+            full_weights = torch.ones(len(CANONICAL_LABELS), dtype=torch.float32)
         set_seed(args.seed)
         final_trainer = WeightedTrainer(
             model=new_model(),
-            args=train_arguments(final_dir, lr=float(selected["learning_rate"]), epochs=int(selected["epochs"]), select_best=False),
+            args=train_arguments(final_dir, lr=float(selected["learning_rate"]), epochs=refit_epochs, select_best=False),
             train_dataset=EncodedRecords(
                 train_records, tokenizer, args.max_length, args.claim_token_budget, args.evidence_token_budget
             ),
@@ -463,11 +491,15 @@ def main() -> None:
             {
                 "selected_trial": selected["trial"],
                 "training_claim_count": len(train_records),
-                "epochs": selected["epochs"],
+                "epochs": refit_epochs,
+                "refit_epoch_policy": args.refit_epoch_policy,
                 "learning_rate": selected["learning_rate"],
             },
             final_complete_path,
         )
+        del final_trainer
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     final_model = AutoModelForSequenceClassification.from_pretrained(final_dir)
     final_trainer = WeightedTrainer(
@@ -476,6 +508,7 @@ def main() -> None:
         data_collator=collator,
         class_weights=torch.ones(len(CANONICAL_LABELS), dtype=torch.float32),
     )
+    eval_dataset = EncodedRecords(eval_records, tokenizer, args.max_length, args.claim_token_budget, args.evidence_token_budget)
     prediction_output = final_trainer.predict(eval_dataset)
     logits = prediction_output.predictions[0] if isinstance(prediction_output.predictions, tuple) else prediction_output.predictions
     probabilities = torch.softmax(torch.tensor(logits), dim=1).cpu().numpy()
@@ -506,6 +539,8 @@ def main() -> None:
         "evidence_source": str(args.eval_rankings),
         "model": args.model,
         "model_path": str(final_dir),
+        "refit_epochs": refit_epochs,
+        "refit_epoch_policy": args.refit_epoch_policy,
     }
     write_json(final_report, final_metrics_path)
     write_run_manifest(

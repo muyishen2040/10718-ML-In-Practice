@@ -14,6 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.evaluation.classification import evaluate_predictions  # noqa: E402
+from src.data.evidence import attach_evidence  # noqa: E402
 from src.evaluation.end_to_end import annotate_retrieval_coverage, evaluate_by_retrieval_coverage  # noqa: E402
 from src.verification.tfidf_logreg import TfidfLogRegVerifier  # noqa: E402
 from src.utils.io import read_jsonl, write_jsonl  # noqa: E402
@@ -21,11 +22,7 @@ from src.utils.runs import resolve_run_directory, write_run_manifest  # noqa: E4
 
 
 def attach_retrieved_evidence(records: list[dict[str, Any]], rankings_path: Path) -> list[dict[str, Any]]:
-    rankings = {str(row["claim_id"]): row.get("retrieved") or [] for row in read_jsonl(rankings_path)}
-    missing = [record["claim_id"] for record in records if record["claim_id"] not in rankings]
-    if missing:
-        raise ValueError(f"Rankings are missing {len(missing)} records, e.g. {missing[:3]}")
-    return [{**record, "retrieved_evidence": rankings[str(record["claim_id"])]} for record in records]
+    return attach_evidence(records, rankings_path)
 
 
 def main() -> None:

@@ -5,6 +5,11 @@ An evidence-first claim-verification project for 10-718 ML in Practice. See
 and experiment sequence. See [COLAB.md](COLAB.md) for the large-corpus and
 LLM-baseline workflow.
 
+The new [evidence-aware reader](EVIDENCE_READER.md) adds source cleaning,
+cached NLI passage scoring, and a trainable three-passage aggregator. Its
+[self-contained Colab notebook](notebooks/evidence_aware_reader_colab.ipynb)
+reuses saved rankings and supports interrupted runs.
+
 ## Current status
 
 The repository implements runnable checkpoint baselines: deterministic BM25,
