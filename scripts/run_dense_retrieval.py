@@ -27,7 +27,12 @@ from scripts.run_averitec_archive_bm25 import (  # noqa: E402
     documents_from_official_member,
     passages_from_documents,
 )
-from scripts.run_bm25 import append_checkpoint_rows, load_checkpoint_rankings, load_qrels  # noqa: E402
+from scripts.run_bm25 import (  # noqa: E402
+    append_checkpoint_rows,
+    load_checkpoint_rankings,
+    load_qrels,
+    repair_checkpoint_rankings,
+)
 from src.data.knowledge_store import _candidate_claim_index  # noqa: E402
 from src.retrieval.metrics import evaluate_rankings  # noqa: E402
 from src.utils.io import read_jsonl, write_json, write_jsonl  # noqa: E402
@@ -168,6 +173,11 @@ def main() -> None:
     parser.add_argument("--device", help="For example cuda or cpu; defaults to SentenceTransformers auto-selection.")
     parser.add_argument("--checkpoint-every", type=int, default=1)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument(
+        "--repair-checkpoint",
+        action="store_true",
+        help="Back up and remove malformed or identical duplicate checkpoint rows before resuming.",
+    )
     parser.add_argument("--finalize", action="store_true", help="Finalize train rankings after all archive shards.")
     args = parser.parse_args()
 
@@ -181,6 +191,8 @@ def main() -> None:
         parser.error("dev requires --corpus and does not accept --archive")
     if args.split == "train" and (args.corpus or (not args.archive and not args.finalize)):
         parser.error("train requires one or more --archive inputs, unless --finalize is used")
+    if args.repair_checkpoint and not args.resume:
+        parser.error("--repair-checkpoint requires --resume")
 
     claims_path = args.data_root / "processed" / "averitec" / f"{args.split}.jsonl"
     if not claims_path.is_file():
@@ -288,6 +300,9 @@ def main() -> None:
         )
         print(json.dumps(report, indent=2))
         return
+
+    if args.repair_checkpoint:
+        repair_checkpoint_rankings(checkpoint_path, known_claim_ids=set(claim_by_id))
 
     finalizing_only = args.split == "train" and args.finalize and not args.archive
     effective_revision = args.revision or saved_config.get("resolved_revision")
