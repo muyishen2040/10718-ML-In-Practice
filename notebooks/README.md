@@ -20,7 +20,7 @@ the archive records that change and its original file hashes.
 
 ## New team evaluation
 
-The coordinator is creating chronological training splits. Existing portable
+The chronological training split release is pending. Existing portable
 notebooks contain historical source/configuration snapshots and do not
 automatically consume [the team evaluation pointer](../configs/team_evaluation.json).
 Adapt the relevant runner to the published manifest before reporting a result

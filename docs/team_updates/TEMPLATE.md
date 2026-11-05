@@ -15,7 +15,7 @@ without a conversation transcript. Replace every placeholder before review.
 ## Inputs and prediction-time availability
 
 - Dataset version and split-manifest path/hash:
-- Coordinator evaluation protocol ID, release revision and fold ID:
+- Shared evaluation protocol ID, release revision and fold ID:
 - Training, validation and evaluation claim counts and dates:
 - Shared input paths relative to `DATA_ROOT`, and hashes:
 - Evidence available at prediction time:

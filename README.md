@@ -20,7 +20,6 @@ It includes the reader follow-up, repository cleanup and team handoff.
 | Teammate A | [Interface / browser extension](docs/tasks/TEAMMATE_A_INTERFACE.md) | User flow, results panel and shared backend integration |
 | Teammate B | [Main ML method](docs/tasks/TEAMMATE_B_METHOD.md) | Evidence selection and local verifier improvements |
 | Teammate C | [Hosted API models](docs/tasks/TEAMMATE_C_API.md) | Same-evidence provider comparisons, cost and latency |
-| Project coordinator | [Evaluation release](docs/EVALUATION.md) | Time-based splits, common scoring and final integration |
 
 Agents should also read [AGENTS.md](AGENTS.md). The
 [work plan](docs/TEAM_WORKPLAN.md) explains dependencies and ownership.
@@ -39,12 +38,12 @@ Use saved rankings when possible; the development passage corpus alone is about
 22.85 GB. Save each new run to a separate personal output directory. See the
 handoff before running dataset preparation or full dense retrieval.
 
-The coordinator is preparing chronological splits inside official train.
+Chronological splits inside official train are planned.
 [configs/team_evaluation.json](configs/team_evaluation.json) is the single
 release pointer for their path, hash and fold IDs. Its current status is
 **pending**; it does not invent a completed split. Existing notebooks do not
 automatically consume this new pointer. Follow [the evaluation guide](docs/EVALUATION.md)
-when the coordinator publishes a ready release.
+once a ready release is published.
 
 All primary historical verdict results use the same 500 official dev claims.
 Dev has been inspected repeatedly; official test stays untouched. Compare hosted

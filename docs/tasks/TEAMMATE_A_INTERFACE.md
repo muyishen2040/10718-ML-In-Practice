@@ -15,7 +15,7 @@ You do not need to train the research models or create evaluation splits.
 - Shared setup, report link and artifacts: [TEAM_HANDOFF.md](../TEAM_HANDOFF.md).
 - Current method results: [TEAM_PROGRESS.md](../TEAM_PROGRESS.md).
 - Proposed requests/responses: [INTEGRATION_CONTRACT.md](../INTEGRATION_CONTRACT.md).
-- Evaluation is owned by the coordinator: [EVALUATION.md](../EVALUATION.md).
+- Shared evaluation protocol: [EVALUATION.md](../EVALUATION.md).
 
 ## Ownership and source setup
 
@@ -34,7 +34,7 @@ model logic inside the frontend.
 
 1. Build against small mock responses using the common contract. Implement claim
    editing, submission, loading, results, missing-source and service-error states.
-   This can proceed while the coordinator is preparing date-based splits.
+   This can proceed while the date-based split release is pending.
 2. Show the verdict, short explanation, faithful source excerpts and clickable
    URLs. Display the three items in relevance order. Use plain-language uncertainty
    rather than an uncalibrated percentage. Keep model/configuration details out
@@ -81,5 +81,5 @@ runs and do not assume a Colab session is an always-on service.
 Submit a PR, a runnable setup guide and a short demo. Add a new update based on
 [the template](../team_updates/TEMPLATE.md), naming the code commit, contract
 version, tested flows, mock/real integration status, known limitations and next
-dependency. Keep service secrets and generated datasets out of Git. The
-coordinator consolidates accepted progress into the shared result record.
+dependency. Keep service secrets and generated datasets out of Git. Add reviewed
+progress to the shared result record.

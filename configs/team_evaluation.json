@@ -1,7 +1,6 @@
 {
   "schema_version": 1,
   "status": "pending",
-  "owner": "project_coordinator",
   "protocol_id": null,
   "split_manifest": null,
   "fold_ids": [],
@@ -21,7 +20,7 @@
     "historical_error_rate_denominator": "all 500 official dev claims"
   },
   "notes": [
-    "The coordinator will publish time-based training splits and an evaluation entry point.",
+    "Time-based training splits and a shared evaluation entry point are planned.",
     "While pending, no shared split path, fold IDs or new evaluation command are available.",
     "This pointer coordinates the team; existing runners do not automatically load it.",
     "Official dev and test are not reassigned by this file."

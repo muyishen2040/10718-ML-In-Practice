@@ -16,7 +16,7 @@ and experiment sequence. See [COLAB.md](BASELINE_COLAB.md) for the large-corpus 
 LLM-baseline workflow.
 
 Teammates and coding agents should start with [the team handoff](../../docs/TEAM_HANDOFF.md),
-[current results](../../docs/TEAM_PROGRESS.md), and [the three-person work plan](../../docs/TEAM_WORKPLAN.md).
+[current results](../../docs/TEAM_PROGRESS.md), and [the team work plan](../../docs/TEAM_WORKPLAN.md).
 These explain Drive shortcuts, reusable artifacts, Git publication status and
 how to return a self-contained experiment update.
 

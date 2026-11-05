@@ -1,9 +1,9 @@
-# Coordinator-owned evaluation release
+# Shared evaluation release
 
-The project coordinator is building time-based splits inside the official
-AVeriTeC training set. Teammates B and C will consume the published split and
-common evaluation entry point. They should not invent independent replacement
-splits to produce the team's comparable result table.
+The planned evaluation uses time-based splits inside the official AVeriTeC
+training set. Local and hosted models must use the same published split and
+evaluation entry point. Do not invent independent replacement splits for the
+team's comparable result table.
 
 The release pointer is [configs/team_evaluation.json](../configs/team_evaluation.json).
 Its initial status is **pending**: no temporal split manifest, fold IDs or new
@@ -23,7 +23,7 @@ The pointer is a coordination file, not an automatic change to existing runners.
 New comparative training and prompt selection wait for the released split.
 This does not block implementation work that does not use validation labels.
 
-## Coordinator publication checklist
+## Release checklist
 
 1. Audit training dates, missing dates, duplicate groups and per-class counts.
    Define two earlier-to-later windows initially, adjusting date boundaries to
@@ -48,8 +48,8 @@ This does not block implementation work that does not use validation labels.
 6. If a release changes, issue a new protocol ID/path/hash and preserve the old
    results. Do not overwrite the same manifest while teammates are running it.
 
-The exact manifest schema is owned by the coordinator. Before release, agree
-its loader with B and C. Current helper functions are useful building blocks,
+Before release, agree on the manifest schema and loader across model runners.
+Current helper functions are useful building blocks,
 but the pair-reader CLI does not yet accept a shared manifest or temporal policy.
 
 ## Loading the published path in Colab
@@ -66,7 +66,7 @@ from pathlib import Path
 DATA_ROOT = Path('/content/drive/MyDrive/10718_averitec/v2_source_documents')
 release = json.loads(Path('configs/team_evaluation.json').read_text())
 if release['status'] != 'ready':
-    raise RuntimeError('The coordinator has not published the evaluation release yet.')
+    raise RuntimeError('The shared evaluation release is not ready yet.')
 reference = release['split_manifest']
 manifest_path = DATA_ROOT / reference['relative_path']
 if not manifest_path.is_file():
@@ -81,7 +81,7 @@ print('Evaluation command:', release['evaluation_command'])
 ```
 
 For a portable notebook restored outside the checkout, load the pointer from
-the actual repository checkout or a coordinator-provided copy at the same Git
+the actual repository checkout or a versioned copy at the same Git
 revision. Do not assume bundled historical notebooks contain this new file.
 
 ## Scoring and leakage rules
@@ -106,8 +106,8 @@ revision. Do not assume bundled historical notebooks contain this new file.
   Gold-answer controls and web-assisted runs are separate evidence settings.
 
 Every update records the protocol ID, manifest hash, fold ID, input rankings,
-code/model/prompt version and exact artifact links. The coordinator maintains
-the canonical score table after reviewing teammate updates.
+code/model/prompt version and exact artifact links. Review teammate updates
+before adding accepted results to the canonical score table.
 
 ## Existing prediction format and scorer
 
@@ -126,5 +126,5 @@ Keep failed requests in a separate error journal until resolved.
 metrics from completed rows. It does not check the expected claim-ID population
 or detect duplicate IDs on its own. The caller must validate exact coverage,
 unique IDs and correct gold-label joins before reporting a full-population
-score. The coordinator's new evaluation command must enforce these checks;
+score. The shared evaluation command must enforce these checks;
 that command remains pending rather than being supplied by this helper.

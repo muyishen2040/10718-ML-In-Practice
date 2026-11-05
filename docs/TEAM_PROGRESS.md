@@ -6,7 +6,7 @@ summarize them. The submitted report and later research are separate snapshots.
 
 ## Source and verification record
 
-- [Implement and Evaluate Baselines report](https://docs.google.com/document/d/1Mg5oxNHiU_7iHtqfiym8EL19Eb0xX3ViJKu4Ium9ufE/edit?usp=sharing), the earlier assignment supplied by the coordinator.
+- [Implement and Evaluate Baselines report](https://docs.google.com/document/d/1Mg5oxNHiU_7iHtqfiym8EL19Eb0xX3ViJKu4Ium9ufE/edit?usp=sharing), the earlier assignment report.
 - [Initial ML Solution report](https://docs.google.com/document/d/1foHMotcyZf8koHD3wpsCdVbcg45mAVq15SVNWQkEYeA/edit), read directly on November 4.
 - [Shared Drive root](https://drive.google.com/drive/folders/19tuNxxB1y9arSmLnrQcxRuPvDQBf6YeK), with active artifacts under `v2_source_documents`.
 - [Latest reader results JSON](https://drive.google.com/file/d/1ppMT_l3C4tvalDe_zaYzWvdbApnXWgjn/view), read directly on November 4.
@@ -172,8 +172,6 @@ another expensive end-to-end run. No large improvement is claimed for this plan.
 
 The proposed assignments are now A: browser extension/interface and backend
 integration; B: local ML and evidence selection; C: hosted API-model experiments.
-The coordinator owns validation, shared scoring and the report. This replaces
-the earlier split into three research-only evaluation/evidence/reader roles.
 
 The hosted-model track first uses the same three supplied passages as the local
 baselines. A web-assisted system is a separate evidence setting. The interface
@@ -201,14 +199,13 @@ The feature branch through `a7a7b8371306c173fa99c6c550b45c2ac49f56d6`
 was then merged into `main`. The handoff now uses `main` for teammate checkout
 and as the base for new task branches.
 
-The coordinator now owns construction/publication of chronological splits and
-the common evaluation path. `configs/team_evaluation.json` records the release
-state, initially pending. Teammates use the published path/hash rather than
-defining separate splits. Three standalone briefs are in `docs/tasks/`; the
+Chronological splits and the common evaluation entry point remain pending.
+`configs/team_evaluation.json` records the release state. Use the published
+path/hash rather than defining separate splits. Task briefs are in `docs/tasks/`; the
 shared protocol is described in [EVALUATION.md](EVALUATION.md).
 
 Each owner writes a new file under `docs/team_updates/`, using the template.
-Include negative results, interrupted runs and unresolved questions. The
-coordinator reviews those updates, adds accepted results here, and updates the
-handoff's artifact map and publication status. Do not replace the submitted
+Include negative results, interrupted runs and unresolved questions. After
+review, add accepted results here and update the handoff's artifact map and
+publication status. Do not replace the submitted
 report's historical numbers with later exploratory results.

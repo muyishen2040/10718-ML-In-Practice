@@ -2,7 +2,7 @@
 
 This is a shared design, not an implemented endpoint. A owns the extension and
 backend boundary, B provides the local-model adapter, C provides the hosted-model
-adapter, and the coordinator resolves shared contract/evaluation changes.
+adapter. Agree on shared contract and evaluation changes before implementation.
 
 The assistant accepts a factual claim, presents up to three ranked sources and
 a four-way preliminary verdict, and leaves the trust/share decision to the user.

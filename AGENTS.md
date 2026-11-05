@@ -11,19 +11,17 @@ The user makes the final trust or sharing decision.
    artifact locations, and the current bottlenecks.
 2. [Progress and results](docs/TEAM_PROGRESS.md): distinguish the submitted
    report from later experiments and distinguish findings from hypotheses.
-3. [Three-person work plan](docs/TEAM_WORKPLAN.md): identify the assigned
+3. [Team work plan](docs/TEAM_WORKPLAN.md): identify the assigned
    workstream and its dependencies before changing shared interfaces.
 4. Open the assigned brief: [A: interface](docs/tasks/TEAMMATE_A_INTERFACE.md),
    [B: main method](docs/tasks/TEAMMATE_B_METHOD.md), or
    [C: API models](docs/tasks/TEAMMATE_C_API.md).
 
 The work split is A: browser extension/interface, B: local ML method,
-and C: hosted API models. The coordinator owns data splitting, shared evaluation
-and integration. The coordinator will publish the evaluation path when ready;
-teammates do not create independent substitutes for the team's comparison.
-The work plan supersedes the earlier evaluation/evidence/reader role assignment.
+and C: hosted API models. Use the shared evaluation release for comparisons;
+do not create independent replacement splits.
 
-The task prompt should name your role: A, B, C or coordinator. If it does not,
+The task prompt should name your role: A, B or C. If it does not,
 complete the handoff's first-session checklist and ask which role to own before
 changing shared code. Use that checklist to report your source version, data
 access, first deliverable and any missing dependency; no earlier chat is needed.
@@ -58,8 +56,8 @@ experiment merely to reorganize files; validate current generator output separat
   tested and what its results do and do not establish.
 - Record each completed or interrupted experiment using
   [the update template](docs/team_updates/TEMPLATE.md). Use a new update file
-  per experiment; the coordinator consolidates accepted findings into
-  `docs/TEAM_PROGRESS.md` and updates the handoff when setup or locations change.
+  per experiment. After review, add accepted findings to `docs/TEAM_PROGRESS.md`
+  and update the handoff when setup or locations change.
 - Include the Git commit or portable-notebook source hash, run configuration,
   owner, stable Drive link, relative artifact paths, and next action. Do not
   describe an experiment as completed without its outputs.

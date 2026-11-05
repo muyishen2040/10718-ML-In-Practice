@@ -4,7 +4,7 @@
 
 > Earlier data-preparation and baseline runbook. New teammates should first read
 > [the handoff](../TEAM_HANDOFF.md) and [notebook catalog](../../notebooks/README.md)
-> to reuse existing shared artifacts and the coordinator's evaluation release.
+> to reuse existing shared artifacts and the shared evaluation release.
 
 Use Colab for the large AVeriTeC knowledge-store archive and API-backed LLM
 experiments. Keep source code in Git; keep datasets, Drive mounts, API keys,

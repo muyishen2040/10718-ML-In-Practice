@@ -1,19 +1,16 @@
 # Teammate and agent handoff
 
 Updated November 5, 2026. This guide assumes no access to earlier conversations.
-Three teammates own the workstreams below; the project coordinator integrates
-their changes and the final report. Names can replace the A/B/C placeholders.
 The current assignment is A: browser extension/interface; B: local ML method;
-C: hosted API models. The coordinator owns shared evaluation and integration.
-The coordinator is preparing the time-based split release and will publish its
-path when complete. See [EVALUATION.md](EVALUATION.md) and the pending
+C: hosted API models. Names can replace the A/B/C placeholders.
+The time-based split release is pending. See [EVALUATION.md](EVALUATION.md) and the
 [release pointer](../configs/team_evaluation.json); do not infer that those
 splits or a new evaluation command already exist.
 
 Root cleanup: current onboarding starts from `README.md` and `AGENTS.md`.
 Dependency profiles live in `requirements/`; earlier specifications/runbooks
 live in `docs/archive/`. The duplicate root guides were removed. Private draft
-notes were preserved in the coordinator's ignored `local/` directory and are
+notes were preserved in the ignored `local/` directory and are
 not teammate onboarding sources.
 
 ## Start here
@@ -42,8 +39,8 @@ Read these sources in order:
 4. [Workstream assignments and deliverables](TEAM_WORKPLAN.md).
 
 The progress document includes the key report results and later findings. If
-report access is unavailable, use that local summary to begin setup and ask the
-coordinator for document access.
+report access is unavailable, use that local summary to begin setup and request
+document access.
 
 Then read the assigned task brief: [A: interface](tasks/TEAMMATE_A_INTERFACE.md),
 [B: main method](tasks/TEAMMATE_B_METHOD.md), or
@@ -63,12 +60,12 @@ Give a new agent an explicit assignment, for example:
 ```text
 You are Teammate B, responsible for the local ML method. Read AGENTS.md,
 docs/TEAM_HANDOFF.md, docs/TEAM_PROGRESS.md and docs/tasks/TEAMMATE_B_METHOD.md.
-Work from this checkout and use the coordinator's evaluation release.
+Work from this checkout and use the shared evaluation release.
 Start with the first deliverable in your brief. Do not assume earlier chat access.
 ```
 
 Replace B and the task-brief path for A or C. If no role is assigned, check setup
-and ask the coordinator which workstream to own before editing shared code.
+and ask which workstream to own before editing shared code.
 
 In the first session, record the Git branch/commit and any local changes, verify
 the shared Drive paths using the cell below, and choose a personal output folder.
@@ -79,7 +76,6 @@ Check `configs/team_evaluation.json` before training or prompt selection.
 | A: interface | Mock claim-entry/results flow and proposed backend contract | A real adapter from B/C; a retrieval implementation for arbitrary live claims |
 | B: local method | Inspect saved predictions/configurations and reader code; prepare one bounded change | Published time-based split and runner support before new comparative fitting |
 | C: API models | Provider mocks, parsing, per-call caching and resume behavior | Published split before paid prompt pilots or model selection |
-| Coordinator | Arrange Drive access and finish the split manifest and scorer | Publish the evaluation release path/hash and confirm the command with B/C |
 
 End setup with a short update: role, code revision, paths checked, first
 deliverable and missing dependencies. If access fails, report the exact missing
@@ -128,8 +124,8 @@ Avoid concurrent work on the same branch or output directory.
 
 ## Add shared data to your own Colab
 
-1. Open the shared `10718_averitec` folder using your own Google account. Ask the
-   coordinator for access if needed. Reading existing data needs Viewer access.
+1. Open the shared `10718_averitec` folder using your own Google account. Request
+   access if needed. Reading existing data needs Viewer access.
 2. In Drive, select the folder and use **Organize > Add shortcut > My Drive**.
    Keep the shortcut name `10718_averitec`. This points to the existing files;
    it does not copy tens of GB into a second dataset.

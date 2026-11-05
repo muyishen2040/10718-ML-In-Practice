@@ -1,6 +1,6 @@
 # Script map
 
-Start with [your task brief](../docs/README.md) and the coordinator's
+Start with [your task brief](../docs/README.md) and the shared
 [evaluation release](../docs/EVALUATION.md), not the alphabetical script list.
 Existing script paths remain stable because tests and other runners import
 their helpers. Experimental CLI entry points are not necessarily unused code.
@@ -15,7 +15,7 @@ their helpers. Experimental CLI entry points are not necessarily unused code.
 | [train_tfidf_logreg.py](train_tfidf_logreg.py) | Cheap supervised baseline and evidence joins | Useful CPU comparator |
 | [run_llm_baseline.py](run_llm_baseline.py) | Hosted OpenAI baseline skeleton | C must address resume/cache binding and incomplete-claim handling before a full run |
 | [run_local_llm_baseline.py](run_local_llm_baseline.py) | Local Qwen baseline | Earlier report comparator; reuse saved results when possible |
-| [evaluate_end_to_end.py](evaluate_end_to_end.py), [generate_baseline_report.py](generate_baseline_report.py) | Earlier scoring/report entry points | Do not confuse these with a new coordinator evaluator that has not been released |
+| [evaluate_end_to_end.py](evaluate_end_to_end.py), [generate_baseline_report.py](generate_baseline_report.py) | Earlier scoring/report entry points | Do not confuse these with the planned shared evaluator that has not been released |
 
 ## Saved-data preparation and retrieval
 

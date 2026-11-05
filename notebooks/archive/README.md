@@ -11,7 +11,7 @@ remain in Drive and [the progress record](../../docs/TEAM_PROGRESS.md).
 
 They are not the default workflow for the next team iteration. Start with
 [the main catalog](../README.md), [task briefs](../../docs/README.md) and the
-coordinator's [evaluation release](../../docs/EVALUATION.md).
+shared [evaluation release](../../docs/EVALUATION.md).
 
 | Notebook | Why it is historical |
 | --- | --- |
@@ -30,7 +30,7 @@ coordinator's [evaluation release](../../docs/EVALUATION.md).
 Older code may assume old dependency versions or hard-coded output directories.
 Use a fresh runtime and new personal output path for an intentional reproduction.
 Do not overwrite a finished shared run. Historical source snapshots and holdouts
-do not automatically adopt the coordinator's new time-based splits.
+do not automatically adopt the new time-based splits.
 
 Relevant script helpers remain at stable paths because tests and other runners
 import them. Archiving the notebooks does not make those helpers safe to delete.

@@ -11,7 +11,7 @@ and valid passage citations.
 - Repository: <https://github.com/muyishen2040/10718-ML-In-Practice>
 - Drive/Colab setup, report and artifacts: [TEAM_HANDOFF.md](../TEAM_HANDOFF.md).
 - Baseline results: [TEAM_PROGRESS.md](../TEAM_PROGRESS.md).
-- Coordinator-owned evaluation release: [EVALUATION.md](../EVALUATION.md).
+- Shared evaluation release: [EVALUATION.md](../EVALUATION.md).
 - Common backend boundary: [INTEGRATION_CONTRACT.md](../INTEGRATION_CONTRACT.md).
 
 Explore OpenAI or another provider. No particular provider/model has been chosen
@@ -41,8 +41,8 @@ Reuse the saved split-specific BM25 rankings under `outputs/bm25/`; model calls
 need their retrieved text, not a rebuild of the full passage corpus. Write new
 outputs to a unique personal Drive run directory.
 
-The coordinator will publish the time-based fit/validation manifest path and
-hash through [team_evaluation.json](../../configs/team_evaluation.json). While
+The time-based fit/validation manifest path and hash will be published through
+[team_evaluation.json](../../configs/team_evaluation.json). While
 pending, implement mocks, parsing, caching and integration. Start paid prompt
 pilots on designated training-fit cases after release. Do not choose a private
 replacement split or tune on official dev to speed up comparison.

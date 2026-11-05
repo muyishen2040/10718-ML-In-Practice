@@ -11,11 +11,11 @@ keeping the user able to inspect the sources.
 - Repository: <https://github.com/muyishen2040/10718-ML-In-Practice>
 - Access, submitted report and artifact map: [TEAM_HANDOFF.md](../TEAM_HANDOFF.md).
 - Experiments and current limitations: [TEAM_PROGRESS.md](../TEAM_PROGRESS.md).
-- Coordinator-owned split release: [EVALUATION.md](../EVALUATION.md).
+- Shared split release: [EVALUATION.md](../EVALUATION.md).
 - Shared service boundary: [INTEGRATION_CONTRACT.md](../INTEGRATION_CONTRACT.md).
 
-The coordinator is working on time-based training splits and will publish their
-path and hash in [team_evaluation.json](../../configs/team_evaluation.json).
+The time-based training split release is tracked in
+[team_evaluation.json](../../configs/team_evaluation.json).
 Do not create a different split for the team's new comparison. Existing notebooks
 do not automatically consume this pointer. Inspect/reproduce prior mechanics
 while it is pending; use the ready manifest before new fitting or model selection.
@@ -39,7 +39,7 @@ prove retrieval is the sole bottleneck or that extracted answers are decisive.
 Suggested branch: `team/teammate-b-method`, from the remotely verified shared
 base in the handoff. Main areas: `src/retrieval/`, local-reader files in
 `src/verification/`, relevant training scripts, notebooks and method tests.
-Coordinate changes to common split/scoring interfaces with the coordinator.
+Agree on changes to common split/scoring interfaces before implementation.
 
 Start with these files rather than choosing a model from the full script list:
 
@@ -73,7 +73,7 @@ usually need not be scanned again when training from saved rankings.
 1. Reproduce saved-checkpoint inference and inspect label order, tokenization,
    evidence IDs, precision, best epoch and refit schedule. Preserve this as a
    mechanics check, not a new independent validation result.
-2. Once the coordinator's release is ready, fit the original DistilBERT and
+2. Once the shared release is ready, fit the original DistilBERT and
    corrected raw reader on each released fit subset and score its held-out IDs.
    An old model trained on all 3,067 claims already saw the new validation claims
    and cannot be reused as an independent fold baseline.
@@ -98,7 +98,7 @@ usually need not be scanned again when training from saved rankings.
 
 ## Evaluation and completion
 
-Use the coordinator's fold IDs, source hashes, scorer and stopping/selection
+Use the published fold IDs, source hashes, scorer and stopping/selection
 rules. Record every trial. Report macro-F1, accuracy, per-class scores, FR/FA
 counts and denominators, runtime and relevant uncertainty. Keep the historical
 500-claim official-dev table separate; test remains untouched.
