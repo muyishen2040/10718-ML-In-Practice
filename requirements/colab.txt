@@ -1,4 +1,4 @@
--r requirements.txt
+-r base.txt
 sentence-transformers>=3.4,<6
 transformers>=4.51,<5
 accelerate>=1,<2

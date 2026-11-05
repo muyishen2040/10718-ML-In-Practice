@@ -29,8 +29,10 @@ def main():
             p.add_argument("--" + name, type=Path, required=True)
         if command == "compare":
             p.add_argument("--qrels", type=Path)
+            p.add_argument("--reference-root", type=Path)
             continue
-        p.add_argument("--mode", choices=("raw", "clean", "clean_nli"), required=True)
+        modes = ("raw", "clean", "clean_nli", "qa_same3", "qa_selected3") if command == "train" else ("raw", "clean", "clean_nli")
+        p.add_argument("--mode", choices=modes, required=True)
         if command == "frozen":
             p.add_argument("--baseline", type=Path, required=True)
             p.add_argument("--device", default="cuda")
@@ -45,6 +47,7 @@ def main():
             p.add_argument("--accumulation", type=int, default=8)
             p.add_argument("--seed", type=int, default=718)
             p.add_argument("--distillation-weight", type=float, default=.1)
+            p.add_argument("--loss-normalization", choices=("sample_mean", "batch_weight_mean"), default="sample_mean")
             p.add_argument("--unfreeze-embeddings", action="store_true", help="Also train vocabulary embeddings; increases optimizer memory and checkpoint size")
             p.add_argument("--device", default="cuda")
     args = parser.parse_args()

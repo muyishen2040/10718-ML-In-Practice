@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "status": "pending",
+  "owner": "project_coordinator",
+  "protocol_id": null,
+  "split_manifest": null,
+  "fold_ids": [],
+  "evaluation_command": null,
+  "shared_data_root_relative_to_shortcut": "v2_source_documents",
+  "historical_benchmark": {
+    "claims_relative_path": "processed/averitec/dev.jsonl",
+    "claim_count": 500,
+    "qrels_relative_path": "processed/averitec/dev_qrels.jsonl",
+    "url_judged_claim_count": 386
+  },
+  "metrics": {
+    "primary": "four_class_macro_f1",
+    "display_k": 3,
+    "false_reassurance": "non-Supported gold predicted Supported",
+    "false_alarm": "Supported gold predicted another label",
+    "historical_error_rate_denominator": "all 500 official dev claims"
+  },
+  "notes": [
+    "The coordinator will publish time-based training splits and an evaluation entry point.",
+    "While pending, no shared split path, fold IDs or new evaluation command are available.",
+    "This pointer coordinates the team; existing runners do not automatically load it.",
+    "Official dev and test are not reassigned by this file."
+  ]
+}

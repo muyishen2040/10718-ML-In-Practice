@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.ipynb_checkpoints/
 .venv/
 venv/
 
@@ -14,6 +15,12 @@ outputs/
 # Local checkpoint-writing workspace documents
 AGENT_UPDATE.md
 BASELINE_CHECKPOINT_REPORT_DRAFT.md
+/INITIAL_ML_SOLUTION_REPORT_DRAFT.md
+
+# Local scratch reports; shared progress belongs in docs/
+/local/
+/tmp.md
+/tmp.txt
 
 # Secrets and local configuration
 .env

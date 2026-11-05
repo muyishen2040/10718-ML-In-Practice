@@ -1,4 +1,10 @@
+> Archived reference, November 4, 2026. Start with [AGENTS.md](../../AGENTS.md) and [the current handoff](../TEAM_HANDOFF.md). Historical status and evaluation rules below do not override the current [evaluation release](../EVALUATION.md). Run any old commands from the repository root.
+
 # AGENT.md — Misinformation Screening Assistant
+
+> Historical project specification. Some status statements below predate
+> completed experiments. Start with [AGENTS.md](../../AGENTS.md) and
+> [the current handoff](../TEAM_HANDOFF.md) for teammate work and progress.
 
 ## Project Overview
 
@@ -22,7 +28,7 @@ The system is decision support, not an automatic authority on truth.
 ## Current Implementation Status
 
 The detailed build contract and command reference live in
-[`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) and [`README.md`](README.md).
+[`IMPLEMENTATION_PLAN.md`](INITIAL_IMPLEMENTATION_PLAN.md) and [`README.md`](../../README.md).
 This section is the concise source of truth for current progress.
 
 ### Implemented and validated locally

@@ -1,8 +1,10 @@
+> Archived reference, November 4, 2026. Start with [AGENTS.md](../../AGENTS.md) and [the current handoff](../TEAM_HANDOFF.md). Historical status and evaluation rules below do not override the current [evaluation release](../EVALUATION.md). Run any old commands from the repository root.
+
 # Evidence-aware reader
 
 Branch: `feat/evidence-aware-reader`
 
-Start with [the portable Colab notebook](notebooks/evidence_aware_reader_colab.ipynb).
+Start with [the portable Colab notebook](../../notebooks/evidence_aware_reader_colab.ipynb).
 It embeds the implementation, so an unpushed branch does not cause missing-script
 errors in Colab. Use a fresh GPU runtime. Original data, rankings, reports and
 models are preserved; the default new run is `outputs/evidence_aware_reader_v1/`

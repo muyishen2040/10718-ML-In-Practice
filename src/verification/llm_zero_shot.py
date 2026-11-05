@@ -113,7 +113,7 @@ def call_openai_structured(
     try:
         from openai import OpenAI
     except ImportError as error:
-        raise RuntimeError("Install requirements-colab.txt before using the LLM baseline.") from error
+        raise RuntimeError("Install requirements/colab.txt before using the LLM baseline.") from error
     completion = OpenAI().chat.completions.parse(
         model=model,
         messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],

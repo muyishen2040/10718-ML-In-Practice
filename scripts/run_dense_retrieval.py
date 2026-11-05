@@ -55,7 +55,7 @@ def load_embedding_model(model_name: str, revision: str | None, device: str | No
         from sentence_transformers import SentenceTransformer
     except ImportError as error:
         raise RuntimeError(
-            "Dense retrieval requires sentence-transformers. Install requirements-colab.txt first."
+            "Dense retrieval requires sentence-transformers. Install requirements/colab.txt first."
         ) from error
 
     print(f"Library import completed in {time.monotonic() - started:.1f}s; loading model weights...", flush=True)

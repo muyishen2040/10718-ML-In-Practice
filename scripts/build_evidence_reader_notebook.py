@@ -12,7 +12,7 @@ TARGET = ROOT / "notebooks/evidence_aware_reader_colab.ipynb"
 
 def build():
     payload, digest = source_snapshot(ROOT, ["scripts/run_evidence_reader.py", "scripts/train_transformer_verifier.py",
-        "scripts/train_tfidf_logreg.py", "requirements-evidence-reader-colab.txt"])
+        "scripts/train_tfidf_logreg.py", "requirements/reader-colab.txt"])
     notebook = NotebookBuilder(TARGET.name)
     md, code = notebook.markdown, notebook.code
     md("""
@@ -51,7 +51,7 @@ print('Source snapshot:', SOURCE_SHA256)
     code("""
 if 'transformers' in sys.modules and sys.modules['transformers'].__version__ != '4.57.1':
     raise RuntimeError('Restart the Colab session, then run this notebook first.')
-subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', '-r', str(RUNTIME / 'requirements-evidence-reader-colab.txt')], check=True)
+subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', '-r', str(RUNTIME / 'requirements/reader-colab.txt')], check=True)
 from google.colab import drive
 drive.mount('/content/drive')
 import torch

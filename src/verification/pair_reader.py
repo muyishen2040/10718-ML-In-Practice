@@ -15,11 +15,26 @@ from src.data.averitec import CANONICAL_LABELS
 from src.retrieval.evidence_quality import QUALITY_NAMES, nli_label_order, pair_premise
 
 
+def weighted_verdict_loss(logits, labels, weights, normalization="sample_mean"):
+    """Keep class weights effective even for singleton/single-class microbatches.
+
+    Weights have dataset mean one. Averaging weighted per-example losses gives
+    the same gradient under equal-size microbatch accumulation as a full batch.
+    The legacy option is retained for old checkpoints and controlled ablations.
+    """
+    if normalization not in ("sample_mean", "batch_weight_mean"):
+        raise ValueError(f"Unknown loss normalization: {normalization}")
+    reduction = "none" if normalization == "sample_mean" else "mean"
+    loss = nn.functional.cross_entropy(logits.float(), labels, weight=weights.float(), reduction=reduction)
+    return loss.mean()
+
+
 class PairReaderConfig(PretrainedConfig):
     model_type = "evidence_pair_reader"
 
     def __init__(self, encoder_config=None, projection_size=192, dropout=0.15,
-                 nli_labels=None, class_weights=None, distillation_weight=0.1, freeze_word_embeddings=True, **kwargs):
+                 nli_labels=None, class_weights=None, distillation_weight=0.1, freeze_word_embeddings=True,
+                 loss_normalization="batch_weight_mean", **kwargs):
         kwargs.pop("num_labels", None)
         super().__init__(num_labels=4, **kwargs)
         self.encoder_config = encoder_config or {}
@@ -29,6 +44,9 @@ class PairReaderConfig(PretrainedConfig):
         self.class_weights = class_weights or [1.0] * 4
         self.distillation_weight = distillation_weight
         self.freeze_word_embeddings = freeze_word_embeddings
+        if loss_normalization not in ("sample_mean", "batch_weight_mean"):
+            raise ValueError("Unknown verdict-loss normalization")
+        self.loss_normalization = loss_normalization
         self.id2label = dict(enumerate(CANONICAL_LABELS))
         self.label2id = {v: k for k, v in self.id2label.items()}
 
@@ -55,14 +73,15 @@ class EvidencePairReader(PreTrainedModel):
             self.reader.get_input_embeddings().requires_grad_(False)
 
     @classmethod
-    def from_nli(cls, name, revision=None, *, class_weights=None, label_order=None, distillation_weight=0.1, freeze_word_embeddings=True):
+    def from_nli(cls, name, revision=None, *, class_weights=None, label_order=None, distillation_weight=0.1,
+                 freeze_word_embeddings=True, loss_normalization="sample_mean"):
         reader = AutoModelForSequenceClassification.from_pretrained(name, revision=revision)
         if int(reader.config.num_labels) != 3:
             raise ValueError("Reader initialization requires a three-label NLI model")
         order = nli_label_order(reader.config.id2label, label_order)
         config = PairReaderConfig(encoder_config=reader.config.to_dict(), nli_labels=order,
                                   class_weights=class_weights, distillation_weight=distillation_weight,
-                                  freeze_word_embeddings=freeze_word_embeddings)
+                                  freeze_word_embeddings=freeze_word_embeddings, loss_normalization=loss_normalization)
         model = cls(config)
         model.reader = reader
         if freeze_word_embeddings:
@@ -97,7 +116,7 @@ class EvidencePairReader(PreTrainedModel):
         logits = self.verdict(features.to(hidden.dtype))
         loss = None
         if labels is not None:
-            loss = nn.functional.cross_entropy(logits.float(), labels, weight=self.verdict_weights.float())
+            loss = weighted_verdict_loss(logits, labels, self.verdict_weights, self.config.loss_normalization)
             if self.config.distillation_weight:
                 teacher = teacher_probabilities.float().clamp_min(1e-7)
                 kl = nn.functional.kl_div(nli.log_softmax(-1), teacher, reduction="none").sum(-1)

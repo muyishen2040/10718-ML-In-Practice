@@ -34,6 +34,8 @@ def train_reader(args):
         raise ValueError("Training requires full preparation, not the smoke-test subset")
     if not (args.prepared / "preparation_report.json").is_file():
         raise ValueError("Evidence preparation has not finished")
+    if args.mode in preparation.get("distillation_incompatible_modes", []) and args.distillation_weight:
+        raise ValueError("Changed passage text has no matching NLI teacher scores; set --distillation-weight 0")
     paths = {"train": args.data_root / "processed/averitec/train.jsonl", "dev": args.data_root / "processed/averitec/dev.jsonl",
              "train_rankings": args.prepared / args.mode / "train_rankings.jsonl", "dev_rankings": args.prepared / args.mode / "dev_rankings.jsonl"}
     records = {s: attach_evidence(read_jsonl(paths[s]), paths[s + "_rankings"], exact=True) for s in ("train", "dev")}
@@ -44,6 +46,7 @@ def train_reader(args):
               "epochs": args.epochs, "batch_size": args.batch_size, "accumulation": args.accumulation,
               "seed": args.seed, "validation_seed": args.validation_seed, "validation_policy": args.validation_policy,
               "distillation_weight": args.distillation_weight, "device": args.device,
+              "loss_normalization": getattr(args, "loss_normalization", "sample_mean"),
               "freeze_word_embeddings": not getattr(args, "unfreeze_embeddings", False),
               "implementation_sha256": sha256_file(Path(__file__)),
               "architecture_sha256": sha256_file(Path(__file__).with_name("pair_reader.py"))}
@@ -65,7 +68,8 @@ def train_reader(args):
         set_seed(args.seed)
         return EvidencePairReader.from_nli(preparation["nli_model"], preparation["revision"],
                     class_weights=weights(rows), label_order=preparation.get("nli_label_order"),
-                    distillation_weight=args.distillation_weight, freeze_word_embeddings=not getattr(args, "unfreeze_embeddings", False))
+                    distillation_weight=args.distillation_weight, freeze_word_embeddings=not getattr(args, "unfreeze_embeddings", False),
+                    loss_normalization=getattr(args, "loss_normalization", "sample_mean"))
 
     def training_args(directory, lr, epochs, validation):
         return TrainingArguments(output_dir=str(directory), learning_rate=lr, num_train_epochs=epochs,
@@ -103,6 +107,7 @@ def train_reader(args):
         val_predictions = predictions(trainer.predict(val_data).predictions, val_rows)
         checkpoint_state = json.loads((Path(trainer.state.best_model_checkpoint) / "trainer_state.json").read_text())
         report = {**evaluate_predictions(val_predictions), "learning_rate": lr, "best_epoch": checkpoint_state["epoch"]}
+        report["predicted_label_counts"] = {label: sum(p["predicted_label"] == label for p in val_predictions) for label in CANONICAL_LABELS}
         atomic_jsonl(val_predictions, directory / "validation_predictions.jsonl")
         write_json(report, summary_path)
         trials.append(report)
@@ -116,6 +121,8 @@ def train_reader(args):
                  "validation_claim_ids": [r["claim_id"] for r in val_rows]}
     write_json(selection, output / "model_selection.json")
     print("Selected train-holdout score:", chosen["macro_f1"], "epoch:", chosen["best_epoch"], flush=True)
+    print("Holdout predictions per class:", chosen.get("predicted_label_counts"), flush=True)
+    print("Holdout F1 per class:", {label: chosen["per_class"][label]["f1-score"] for label in CANONICAL_LABELS}, flush=True)
     if args.selection_only:
         return
     final = output / "final_model"

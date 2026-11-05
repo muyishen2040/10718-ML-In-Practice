@@ -1,3 +1,5 @@
+> Archived reference, November 4, 2026. Start with [AGENTS.md](../../AGENTS.md) and [the current handoff](../TEAM_HANDOFF.md). Historical status and evaluation rules below do not override the current [evaluation release](../EVALUATION.md). Run any old commands from the repository root.
+
 # Implementation Plan — Misinformation Screening Assistant
 
 ## 1. Goal and scope

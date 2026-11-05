@@ -1,4 +1,10 @@
+> Archived reference, November 4, 2026. Start with [AGENTS.md](../../AGENTS.md) and [the current handoff](../TEAM_HANDOFF.md). Historical status and evaluation rules below do not override the current [evaluation release](../EVALUATION.md). Run any old commands from the repository root.
+
 # Colab workflow
+
+> Earlier data-preparation and baseline runbook. New teammates should first read
+> [the handoff](../TEAM_HANDOFF.md) and [notebook catalog](../../notebooks/README.md)
+> to reuse existing shared artifacts and the coordinator's evaluation release.
 
 Use Colab for the large AVeriTeC knowledge-store archive and API-backed LLM
 experiments. Keep source code in Git; keep datasets, Drive mounts, API keys,
@@ -9,7 +15,7 @@ and generated outputs out of Git.
 ```python
 !git clone https://github.com/muyishen2040/10718-ML-In-Practice.git
 %cd 10718-ML-In-Practice
-!pip install -r requirements-colab.txt
+!pip install -r requirements/colab.txt
 ```
 
 Either use Colab's local disk or mount Drive, then set a single data root:
@@ -228,7 +234,7 @@ does not require an API key. Select a GPU in **Runtime > Change runtime type**,
 then install the local-inference extras:
 
 ```python
-!pip install -q -r requirements-local-llm-colab.txt
+!pip install -q -r requirements/local-llm-colab.txt
 !nvidia-smi
 ```
 
@@ -367,9 +373,9 @@ caused every classification outcome.
 ## 9. Initial ML Solution experiments
 
 The Drive-backed notebook for the next assignment is
-[`notebooks/initial_ml_solution_colab.ipynb`](notebooks/initial_ml_solution_colab.ipynb).
+[`notebooks/archive/initial_ml_solution_colab.ipynb`](../../notebooks/archive/initial_ml_solution_colab.ipynb).
 For a clean rerun in a separate output directory, use
-[`notebooks/initial_ml_solution_colab_rerun.ipynb`](notebooks/initial_ml_solution_colab_rerun.ipynb).
+[`notebooks/archive/initial_ml_solution_colab_rerun.ipynb`](../../notebooks/archive/initial_ml_solution_colab_rerun.ipynb).
 It runs four extensions on the same official AVeriTeC train/dev split:
 
 1. Pure BGE dense retrieval over each claim's complete candidate pool.

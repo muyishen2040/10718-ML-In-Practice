@@ -1,0 +1,127 @@
+{
+  "date": "2026-11-04",
+  "reason": "Move repository dependency profiles into requirements/ while retaining archived model/prompt code.",
+  "portable_snapshots": "Unchanged; bundled install files are restored independently of the repository root.",
+  "notebooks": [
+    {
+      "path": "notebooks/archive/initial_ml_solution_answer_aligned_top100_colab.ipynb",
+      "changed_cells": [
+        1
+      ],
+      "scope": "dependency_install_paths_only",
+      "profile_mapping": {
+        "requirements-colab.txt": "requirements/colab.txt"
+      },
+      "sha256_before": "e0290b5e0590a401e60d7330b66d32fa777527e67795c023fec98443429c7bcf",
+      "sha256_after": "9bf53e3eae863969de621e81402f444a77f1d7e02e01d8c39390f136b93d4a06"
+    },
+    {
+      "path": "notebooks/archive/initial_ml_solution_answer_aware_colab.ipynb",
+      "changed_cells": [
+        1
+      ],
+      "scope": "dependency_install_paths_only",
+      "profile_mapping": {
+        "requirements-colab.txt": "requirements/colab.txt"
+      },
+      "sha256_before": "0ad2484b8423fbb53ccedfa7116327de62e1d751abc47a969bc9d5732e81e741",
+      "sha256_after": "d698ccdb3f362046a23a92c1e09f61004c1fbcd1efc442be4d530fcd8681cc8d"
+    },
+    {
+      "path": "notebooks/archive/initial_ml_solution_colab.ipynb",
+      "changed_cells": [
+        1
+      ],
+      "scope": "dependency_install_paths_only",
+      "profile_mapping": {
+        "requirements-colab.txt": "requirements/colab.txt"
+      },
+      "sha256_before": "b2a96a415bb517f9f00c24d4d1e2afea4f23cd62deac9ef502d5495afef24c5a",
+      "sha256_after": "65f6333f219c582d6c261d167fbb1a6dba2df97f3d6c297b122b2174945037d3"
+    },
+    {
+      "path": "notebooks/archive/initial_ml_solution_colab_rerun.ipynb",
+      "changed_cells": [
+        1
+      ],
+      "scope": "dependency_install_paths_only",
+      "profile_mapping": {
+        "requirements-colab.txt": "requirements/colab.txt"
+      },
+      "sha256_before": "53d366f0acd4b13d1733aaa97b927ebfa9adbe0cb9b39c392165a84b8ad36429",
+      "sha256_after": "06f67bd8ed9a59bee336e87109e0074e8b5fd62ff8303d81289c6f17e12bba5f"
+    },
+    {
+      "path": "notebooks/archive/initial_ml_solution_dense_fusion_comparison_colab.ipynb",
+      "changed_cells": [
+        1
+      ],
+      "scope": "dependency_install_paths_only",
+      "profile_mapping": {
+        "requirements-colab.txt": "requirements/colab.txt"
+      },
+      "sha256_before": "336f2b90524fcb7cf5a9ce021c019561a612a5c04a3082307c4eda60cc478e7b",
+      "sha256_after": "1c2c38b0bcbae6a3aab80ccef516ecb97c3aba2e5fa2e13988b586e99732646e"
+    },
+    {
+      "path": "notebooks/archive/initial_ml_solution_fast_bge_verifier_swap_colab.ipynb",
+      "changed_cells": [
+        1
+      ],
+      "scope": "dependency_install_paths_only",
+      "profile_mapping": {
+        "requirements-colab.txt": "requirements/colab.txt"
+      },
+      "sha256_before": "51aa1da06f0f4c705e5f001aac72709d6da93f1b708d95bb38567daa48652af1",
+      "sha256_after": "7e2fc032dd63aa888fb01040ec2e02bb4cdd8f4d952289d77b09bfcb328c6da8"
+    },
+    {
+      "path": "notebooks/archive/initial_ml_solution_followup_colab.ipynb",
+      "changed_cells": [
+        1
+      ],
+      "scope": "dependency_install_paths_only",
+      "profile_mapping": {
+        "requirements-colab.txt": "requirements/colab.txt"
+      },
+      "sha256_before": "77c912b81a6053a95319ecbf33af46ddbf22d9f4aab8f51900d6045b27beda92",
+      "sha256_after": "11110a626ffd762d72e84fae70af198fb05f200e0a4d56ef4e242f6fa9186fed"
+    },
+    {
+      "path": "notebooks/archive/initial_ml_solution_next_colab.ipynb",
+      "changed_cells": [
+        1
+      ],
+      "scope": "dependency_install_paths_only",
+      "profile_mapping": {
+        "requirements-colab.txt": "requirements/colab.txt"
+      },
+      "sha256_before": "1d8aa79505dd46f74c48bf3bdea24e604caaee5471dfd7c15880fce5caccecdc",
+      "sha256_after": "5ccba7888863b1f1faa4b45fde85ba2b0f1ee69f4d18b2d2170bc227d60feb06"
+    },
+    {
+      "path": "notebooks/archive/initial_ml_solution_question_guided_colab.ipynb",
+      "changed_cells": [
+        1
+      ],
+      "scope": "dependency_install_paths_only",
+      "profile_mapping": {
+        "requirements-local-llm-colab.txt": "requirements/local-llm-colab.txt"
+      },
+      "sha256_before": "87cce47cb3b68b7394018f7f038db41db429bb6a3a8adb01ca3ff21ab0fdf8d3",
+      "sha256_after": "0819411212c588080b791d1d0459843f8dc76c8d98fb79b96d375c58c09c74a6"
+    },
+    {
+      "path": "notebooks/archive/initial_ml_solution_supervised_rerank_colab.ipynb",
+      "changed_cells": [
+        1
+      ],
+      "scope": "dependency_install_paths_only",
+      "profile_mapping": {
+        "requirements-colab.txt": "requirements/colab.txt"
+      },
+      "sha256_before": "23a28dc7b1ce7067de3e8d7be3443436fe6f7a58a3a7375d8abf849f4e62fb67",
+      "sha256_after": "e981384478f8a42145aaef149d4e18391c70c43fafada098f43c984283de8fcc"
+    }
+  ]
+}

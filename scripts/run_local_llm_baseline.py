@@ -133,7 +133,7 @@ def load_local_model(model_name: str):
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
     except ImportError as error:
-        raise RuntimeError("Install requirements-local-llm-colab.txt before running the local LLM baseline.") from error
+        raise RuntimeError("Install requirements/local-llm-colab.txt before running the local LLM baseline.") from error
     if not torch.cuda.is_available():
         raise RuntimeError("A CUDA GPU runtime is required. In Colab: Runtime > Change runtime type > T4 GPU.")
     quantization_config = BitsAndBytesConfig(

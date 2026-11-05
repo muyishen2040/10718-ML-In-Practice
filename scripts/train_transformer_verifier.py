@@ -265,7 +265,7 @@ def main() -> None:
             set_seed,
         )
     except ImportError as error:
-        raise RuntimeError("Transformer training requires transformers; install requirements-colab.txt first.") from error
+        raise RuntimeError("Transformer training requires transformers; install requirements/colab.txt first.") from error
 
     class WeightedTrainer(Trainer):
         def __init__(self, *trainer_args: Any, class_weights: torch.Tensor, **trainer_kwargs: Any):

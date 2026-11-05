@@ -90,7 +90,7 @@ def test_main_method_notebook_compiles_and_embeds_its_dependencies():
     sources = json.loads(payload)
     assert "scripts/run_evidence_reader.py" in sources
     assert "src/verification/pair_reader.py" in sources
-    assert "requirements-evidence-reader-colab.txt" in sources
+    assert "requirements/reader-colab.txt" in sources
     for name, text in sources.items():
         if name.endswith(".py"):
             ast.parse(text, filename=name)

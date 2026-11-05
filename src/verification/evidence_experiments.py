@@ -109,18 +109,44 @@ def compare_results(args):
         name = path.parent.name
         predictions[name] = validate_predictions(read_jsonl(path.with_name("final_dev_predictions.jsonl")), claims)
         reports[name] = evaluate_predictions(predictions[name])
-    reference = predictions.get("frozen/raw")
-    paired = {name: paired_delta(reference, rows) for name, rows in predictions.items() if reference and name != "frozen/raw"}
+    reference_root = getattr(args, "reference_root", None)
+    if reference_root is not None:
+        # Read completed old predictions without refitting or rewriting old runs.
+        for path in sorted(reference_root.glob("**/metrics.json")):
+            pred_path = path.with_name("predictions.jsonl")
+            if not pred_path.is_file():
+                continue
+            name = "previous/" + path.parent.relative_to(reference_root).as_posix().removesuffix("/dev")
+            predictions[name] = validate_predictions(read_jsonl(pred_path), claims)
+            reports[name] = evaluate_predictions(predictions[name])
+        for path in sorted(reference_root.glob("distil_*/final_dev_predictions.jsonl")):
+            name = "previous/" + path.parent.name
+            predictions[name] = validate_predictions(read_jsonl(path), claims)
+            reports[name] = evaluate_predictions(predictions[name])
+    reference_name = "frozen/raw" if "frozen/raw" in predictions else "previous/frozen/raw"
+    reference = predictions.get(reference_name)
+    paired = {name: paired_delta(reference, rows) for name, rows in predictions.items() if reference and name != reference_name}
+    contrasts = {}
+    for old, new in (("pair/raw_legacy_d01", "pair/raw_sample_d01"),
+                     ("pair/raw_sample_d01", "pair/raw_sample_d0"),
+                     ("pair/raw_sample_d0", "pair/qa_same3_d0"),
+                     ("pair/qa_same3_d0", "pair/qa_selected3_d0")):
+        if old in predictions and new in predictions:
+            contrasts[new + " minus " + old] = paired_delta(predictions[old], predictions[new])
     normalized_train = {normalized_text(r["claim"]) for r in read_jsonl(args.data_root / "processed/averitec/train.jsonl")}
     keep = {r["claim_id"] for r in claims if normalized_text(r["claim"]) not in normalized_train}
     nonoverlap = {name: evaluate_predictions([r for r in rows if r["claim_id"] in keep]) for name, rows in predictions.items()} if keep else {}
     retrieval = {}
     if args.qrels:
         qrels = {r["claim_id"]: r["relevant_passage_ids"] for r in read_jsonl(args.qrels) if r.get("relevant_passage_ids")}
-        for mode in ("raw", "clean", "clean_nli"):
-            rows = read_jsonl(args.prepared / mode / "dev_rankings.jsonl")
+        for path in sorted(args.prepared.glob("*/dev_rankings.jsonl")):
+            mode = path.parent.name
+            rows = read_jsonl(path)
             retrieval[mode] = evaluate_rankings({r["claim_id"]: [p["passage_id"] for p in r["retrieved"]] for r in rows}, qrels, k=3)
-    report = {"verdicts": reports, "paired_vs_frozen_raw": paired, "nonoverlapping_text_subset": nonoverlap,
+    counts = {name: {label: sum(r["predicted_label"] == label for r in rows) for label in CANONICAL_LABELS}
+              for name, rows in predictions.items()}
+    report = {"verdicts": reports, "predicted_label_counts": counts, "paired_vs_frozen_raw": paired,
+              "reference_name": reference_name, "planned_paired_contrasts": contrasts, "nonoverlapping_text_subset": nonoverlap,
               "subset_claim_count": len(keep), "retrieval_fixed_original_url_proxy": retrieval,
               "caveats": ["Official dev is exploratory after repeated inspection; test untouched.",
                           "NLI probabilities are not calibrated four-way verdict probabilities.",
@@ -132,6 +158,17 @@ def compare_results(args):
     for name, m in reports.items():
         errors = m["decision_error_rates"]
         lines.append(f"| {name} | {m['macro_f1']:.4f} | {m['accuracy']:.4f} | {errors['false_reassurance_count']} | {errors['false_alarm_count']} |")
+    lines += ["", "| Method | Supported F1 | Refuted F1 | NEI F1 | Conflict F1 | Predicted NEI / conflict |",
+              "| --- | ---: | ---: | ---: | ---: | ---: |"]
+    for name, m in reports.items():
+        f1 = [m["per_class"][label]["f1-score"] for label in CANONICAL_LABELS]
+        rare = f"{counts[name]['Not Enough Evidence']} / {counts[name]['Conflicting Evidence']}"
+        lines.append(f"| {name} | " + " | ".join(f"{v:.4f}" for v in f1) + f" | {rare} |")
+    if contrasts:
+        lines += ["", "Planned paired comparisons (macro-F1 delta and 95% interval):"]
+        for name, contrast in contrasts.items():
+            low, high = contrast["interval_95pct"]
+            lines.append(f"- {name}: {contrast['delta_macro_f1']:+.4f} [{low:+.4f}, {high:+.4f}]")
     lines += ["", "Full per-class, calibration, overlap-subset and paired interval results: evidence_reader_results.json.",
               "", "Frozen rows use the original BM25-trained DistilBERT. Pair rows train the new NLI-initialized reader. Fast rows train a classifier on frozen NLI features."]
     (args.output / "evidence_reader_results.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
