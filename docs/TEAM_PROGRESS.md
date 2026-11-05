@@ -194,6 +194,11 @@ were updated only for external install paths; portable snapshots stayed frozen.
 Historical result artifacts and experimental helper
 code were retained. This organization change establishes no new ML results.
 
+On November 5, the reader follow-up, cleanup and team documents were published
+on `feat/evidence-aware-reader`, with tested code snapshot
+`bd328349bc75b4aa1f0c714657f6a0ed48b16195` (106 tests passed).
+The handoff includes checkout instructions; `main` remains the earlier snapshot.
+
 The coordinator now owns construction/publication of chronological splits and
 the common evaluation path. `configs/team_evaluation.json` records the release
 state, initially pending. Teammates use the published path/hash rather than

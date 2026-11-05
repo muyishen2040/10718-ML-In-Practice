@@ -1,6 +1,6 @@
 # Team work plan
 
-Updated November 4, 2026. The coordinator owns time-based data splitting, the
+Updated November 5, 2026. The coordinator owns time-based data splitting, the
 common evaluation release and final integration. Three teammates own interface,
 local ML improvements and hosted API experiments. These are work assignments,
 not claims that the implementations or new experiments are complete.
@@ -19,8 +19,9 @@ then [current results](TEAM_PROGRESS.md), then your task brief.
 
 Suggested task branches are `team/teammate-a-interface`, `team/teammate-b-method`
 and `team/teammate-c-api`, each from the same remotely verified shared base.
-The handoff records the current publication gap: the newer reader code and team
-documents are initially local. Verify the published branch/commit before checkout.
+The reader code and team documents are published on `feat/evidence-aware-reader`.
+The handoff records the tested code snapshot and checkout instructions. Record
+the exact commit used for each task.
 
 Script paths are preserved; historical notebook locations are indexed in
 [`notebooks/archive`](../notebooks/archive/README.md). New product code follows
@@ -51,7 +52,7 @@ are described as the agreed temporal comparison.
 
 1. **Prepare independently:** A builds mock UI, B inspects and reproduces existing
    model mechanics, and C builds provider mocks/parsing/resume support. The
-   coordinator finishes shared access, code publication and the split release.
+   coordinator finishes shared access and the split release.
 2. **Use the released evaluation:** B trains from the released fit IDs and C
    runs bounded prompt/model experiments on the same protocol. A connects a
    benchmark backend using the agreed [integration contract](INTEGRATION_CONTRACT.md).
@@ -78,6 +79,6 @@ and changes the handoff when artifact locations or setup change. This avoids
 three simultaneous edits to the canonical result table. New run outputs use
 personal owner-specific directories; shared completed artifacts remain inputs.
 
-The cleanup adds documentation, a pending release pointer and directory guides.
-It does not build the new splits, deploy an extension, make paid API calls or
-publish a Git branch.
+The cleanup, reader follow-up and handoff are published on the shared feature
+branch. The split release remains pending; no extension deployment or new paid
+API experiment is established by this publication.

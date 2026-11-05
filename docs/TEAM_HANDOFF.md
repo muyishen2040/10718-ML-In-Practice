@@ -79,7 +79,7 @@ Check `configs/team_evaluation.json` before training or prompt selection.
 | A: interface | Mock claim-entry/results flow and proposed backend contract | A real adapter from B/C; a retrieval implementation for arbitrary live claims |
 | B: local method | Inspect saved predictions/configurations and reader code; prepare one bounded change | Published time-based split and runner support before new comparative fitting |
 | C: API models | Provider mocks, parsing, per-call caching and resume behavior | Published split before paid prompt pilots or model selection |
-| Coordinator | Publish the reviewed code/docs, arrange Drive access, finish split manifest and scorer | Confirm the published revision and evaluation command with B/C |
+| Coordinator | Arrange Drive access and finish the split manifest and scorer | Publish the evaluation release path/hash and confirm the command with B/C |
 
 End setup with a short update: role, code revision, paths checked, first
 deliverable and missing dependencies. If access fails, report the exact missing
@@ -89,39 +89,36 @@ path or permission; the shared data does not need to be downloaded again.
 
 Git remote and local checkout verified November 5, 2026:
 
-- The remote advertises `main` at `2148494f486459eef4ab07be63ff72fd1cdfbde0`.
-- The coordinator's local branch is `feat/evidence-aware-reader`, at
-  `aa5dadbb09618ced453adfe45668d23673e51a4a`, with additional uncommitted
-  follow-up-reader code and notebooks. That feature branch was not advertised
-  by the remote when checked.
-- This handoff is initially a local draft. These facts describe a snapshot,
-  not a permanent restriction on publishing the feature branch.
+- The published team branch is
+  [feat/evidence-aware-reader](https://github.com/muyishen2040/10718-ML-In-Practice/tree/feat/evidence-aware-reader).
+- Tested code and cleanup snapshot:
+  `bd328349bc75b4aa1f0c714657f6a0ed48b16195` (106 tests passed). This commit
+  includes the follow-up reader, notebooks and handoff documents. Later commits
+  on the same branch may update documentation; record the exact revision you use.
+- `main` still points to the earlier baseline code at
+  `2148494f486459eef4ab07be63ff72fd1cdfbde0`. Use the team branch for new work.
 
-Before assigning the new reader experiments, the coordinator needs to publish a
-reviewed code snapshot and these handoff documents, and record the remote branch
-and commit here. Until then, `main` supplies the earlier baseline code; cloning
-it does not supply every file used in the latest experiments. A separately
-provided portable notebook contains its own source snapshot and can run without
-a branch checkout, but its code should not be mixed with imports from another
-notebook or checkout in the same Python session.
+The code and handoff are published. Drive access and the new temporal evaluation
+release remain separate setup steps. A portable notebook contains its own source
+snapshot and can run without a branch checkout, but its code should not be mixed
+with imports from another notebook or checkout in the same Python session.
 
 To inspect the remote and start a task branch in a fresh Colab checkout:
 
 ```python
 !git ls-remote --heads https://github.com/muyishen2040/10718-ML-In-Practice.git
-!git clone https://github.com/muyishen2040/10718-ML-In-Practice.git /content/10718-ML-In-Practice
+!git clone --branch feat/evidence-aware-reader https://github.com/muyishen2040/10718-ML-In-Practice.git /content/10718-ML-In-Practice
 %cd /content/10718-ML-In-Practice
 !git log -1 --oneline
 ```
 
 Run the clone cell only when that directory is absent. If it already exists,
-inspect `git status` and the current branch first. After the coordinator publishes
-and identifies the shared base branch, create your own task branch from it:
+inspect `git status` and the current branch first; preserve any local work before
+switching. Create your own task branch from the published shared base:
 
 ```bash
 git fetch origin
-# Replace PUBLISHED_BASE_BRANCH with the remotely verified branch.
-git switch --create team/teammate-a-interface origin/PUBLISHED_BASE_BRANCH
+git switch --create team/teammate-a-interface origin/feat/evidence-aware-reader
 ```
 
 Use `team/teammate-b-method` and `team/teammate-c-api` for the other tasks.
@@ -275,7 +272,7 @@ Choose one source route per fresh session:
   restore the bundled source, and run in order. Do not import an older checkout's
   `src` modules into that session.
 
-Relevant notebooks currently present in the coordinator's workspace:
+Published notebook references:
 
 The two reader reference notebooks remain directly under `notebooks/`.
 Older `initial_ml_solution_*` workflows are under `notebooks/archive/` and
@@ -290,8 +287,8 @@ and [script map](../scripts/README.md) before starting an expensive older run.
 | `evidence_aware_reader_colab.ipynb` | Initial NLI scoring, source cleaning and learned three-passage reader. |
 | `evidence_reader_followup_colab.ipynb` | Corrected weighting, distillation ablation, QA packing and small-pool selection. Latest completed training study. |
 
-Check publication status above before assuming these are all available on
-GitHub. Baseline `requirements/colab.txt`, local-LLM requirements and
+These paths are available on the published team branch above. Baseline
+`requirements/colab.txt`, local-LLM requirements and
 `requirements/reader-colab.txt` serve different workflows. Use the
 chosen notebook's pinned setup. The reader uses Transformers 4.57.1 and Colab's
 CUDA-enabled PyTorch, and avoids importing TensorFlow or sentence-transformers.
