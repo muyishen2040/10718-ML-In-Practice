@@ -197,7 +197,9 @@ code were retained. This organization change establishes no new ML results.
 On November 5, the reader follow-up, cleanup and team documents were published
 on `feat/evidence-aware-reader`, with tested code snapshot
 `bd328349bc75b4aa1f0c714657f6a0ed48b16195` (106 tests passed).
-The handoff includes checkout instructions; `main` remains the earlier snapshot.
+The feature branch through `a7a7b8371306c173fa99c6c550b45c2ac49f56d6`
+was then merged into `main`. The handoff now uses `main` for teammate checkout
+and as the base for new task branches.
 
 The coordinator now owns construction/publication of chronological splits and
 the common evaluation path. `configs/team_evaluation.json` records the release

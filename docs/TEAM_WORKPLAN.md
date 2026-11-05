@@ -19,7 +19,7 @@ then [current results](TEAM_PROGRESS.md), then your task brief.
 
 Suggested task branches are `team/teammate-a-interface`, `team/teammate-b-method`
 and `team/teammate-c-api`, each from the same remotely verified shared base.
-The reader code and team documents are published on `feat/evidence-aware-reader`.
+The reader code and team documents are merged into the shared `main` branch.
 The handoff records the tested code snapshot and checkout instructions. Record
 the exact commit used for each task.
 
@@ -79,6 +79,6 @@ and changes the handoff when artifact locations or setup change. This avoids
 three simultaneous edits to the canonical result table. New run outputs use
 personal owner-specific directories; shared completed artifacts remain inputs.
 
-The cleanup, reader follow-up and handoff are published on the shared feature
-branch. The split release remains pending; no extension deployment or new paid
+The cleanup, reader follow-up and handoff are published on `main`.
+The split release remains pending; no extension deployment or new paid
 API experiment is established by this publication.

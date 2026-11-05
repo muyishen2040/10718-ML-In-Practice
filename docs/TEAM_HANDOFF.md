@@ -89,14 +89,15 @@ path or permission; the shared data does not need to be downloaded again.
 
 Git remote and local checkout verified November 5, 2026:
 
-- The published team branch is
-  [feat/evidence-aware-reader](https://github.com/muyishen2040/10718-ML-In-Practice/tree/feat/evidence-aware-reader).
+- The shared team branch is
+  [main](https://github.com/muyishen2040/10718-ML-In-Practice/tree/main).
+- The reader feature branch was merged into `main` through commit
+  `a7a7b8371306c173fa99c6c550b45c2ac49f56d6`. Create new task branches from
+  `origin/main`.
 - Tested code and cleanup snapshot:
   `bd328349bc75b4aa1f0c714657f6a0ed48b16195` (106 tests passed). This commit
   includes the follow-up reader, notebooks and handoff documents. Later commits
   on the same branch may update documentation; record the exact revision you use.
-- `main` still points to the earlier baseline code at
-  `2148494f486459eef4ab07be63ff72fd1cdfbde0`. Use the team branch for new work.
 
 The code and handoff are published. Drive access and the new temporal evaluation
 release remain separate setup steps. A portable notebook contains its own source
@@ -107,7 +108,7 @@ To inspect the remote and start a task branch in a fresh Colab checkout:
 
 ```python
 !git ls-remote --heads https://github.com/muyishen2040/10718-ML-In-Practice.git
-!git clone --branch feat/evidence-aware-reader https://github.com/muyishen2040/10718-ML-In-Practice.git /content/10718-ML-In-Practice
+!git clone --branch main https://github.com/muyishen2040/10718-ML-In-Practice.git /content/10718-ML-In-Practice
 %cd /content/10718-ML-In-Practice
 !git log -1 --oneline
 ```
@@ -118,7 +119,7 @@ switching. Create your own task branch from the published shared base:
 
 ```bash
 git fetch origin
-git switch --create team/teammate-a-interface origin/feat/evidence-aware-reader
+git switch --create team/teammate-a-interface origin/main
 ```
 
 Use `team/teammate-b-method` and `team/teammate-c-api` for the other tasks.

@@ -20,7 +20,7 @@ You do not need to train the research models or create evaluation splits.
 ## Ownership and source setup
 
 Suggested branch: `team/teammate-a-interface`, created from the published shared
-base commit listed in the handoff. Fetch `origin/feat/evidence-aware-reader`,
+base commit listed in the handoff. Fetch `origin/main`,
 then create your task branch from it. The handoff includes the verified code
 snapshot and checkout commands.
 

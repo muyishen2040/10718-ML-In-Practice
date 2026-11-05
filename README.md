@@ -6,9 +6,8 @@ The user reviews the sources and makes the final trust or sharing decision.
 
 ## Start here
 
-Use the published team branch:
-[`feat/evidence-aware-reader`](https://github.com/muyishen2040/10718-ML-In-Practice/tree/feat/evidence-aware-reader).
-`main` contains the earlier baseline snapshot.
+Use the shared [`main` branch](https://github.com/muyishen2040/10718-ML-In-Practice/tree/main).
+It includes the reader follow-up, repository cleanup and team handoff.
 
 1. Read [the shared handoff](docs/TEAM_HANDOFF.md) for Drive access, Colab setup
    and verified artifact locations.
