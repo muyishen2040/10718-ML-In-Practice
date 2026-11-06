@@ -1,0 +1,3 @@
+# Only needed for --baseline-dir. PyTorch must also be installed.
+transformers==4.57.1
+safetensors

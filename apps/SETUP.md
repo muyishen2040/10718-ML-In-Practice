@@ -1,7 +1,8 @@
 # Run the prototype (development only)
 
-Status: mock interface plus a fixture-replay backend. No ML model, retrieval or
-hosted API is connected yet. Contract: [INTEGRATION_CONTRACT.md](../docs/INTEGRATION_CONTRACT.md).
+Status: mock interface, a fixture-replay backend, and an optional adapter that runs
+the saved BM25-top-3 DistilBERT baseline on AVeriTeC dev claims. No retrieval for
+new claims and no hosted API is connected. Contract: [INTEGRATION_CONTRACT.md](../docs/INTEGRATION_CONTRACT.md).
 
 ## Requirements
 
@@ -25,12 +26,42 @@ Routes: `GET /health`, `GET /benchmark/claims`, `POST /verify`.
 3. Select text on any normal web page, click the extension icon, press
    **Check this claim**. Chrome's own pages block selection; paste instead.
 
+## Run the real baseline on benchmark claims (optional)
+
+Download these shared-Drive files (path relative to `10718_averitec/v2_source_documents/outputs`)
+into the git-ignored `local/baseline/`:
+
+| File | Drive path | Size |
+| --- | --- | --- |
+| `final_model/{model.safetensors,config.json,tokenizer.json,tokenizer_config.json,vocab.txt,special_tokens_map.json}` | `initial_ml_solution_rerun_bs16/transformer/bm25_top3/final_model/` | ~269 MB |
+| `transformer_run_config.json` | `initial_ml_solution_rerun_bs16/transformer/bm25_top3/` | 1 KB |
+| `dev_rankings.jsonl` | `bm25/dev_bm25_top20_v2/` | 14 MB |
+
+Skip the `checkpoint-*` subfolders. Then:
+
+```bash
+python3 -m venv --system-site-packages local/venv-backend
+local/venv-backend/bin/pip install -r apps/backend/requirements-model.txt
+local/venv-backend/bin/python apps/backend/server.py \
+  --baseline-dir local/baseline --dev-rankings local/baseline/dev_rankings.jsonl
+```
+
+Needs PyTorch (already in many environments; otherwise `pip install torch`). Inference
+runs on CPU. The popup's Benchmark mode then searches the 500 dev claims. To run the
+real-model test: `BASELINE_DIR=local/baseline DEV_RANKINGS=local/baseline/dev_rankings.jsonl`
+before `python -m unittest discover -s apps/backend/tests`.
+
+What this is: the saved baseline (macro-F1 0.347, accuracy 0.52 on the 500 official
+dev claims) predicting from each claim's saved BM25 top-three passages. It is not a
+check of arbitrary text, and gold labels are never read. Claims with no saved passage
+return "not enough sources" rather than a guess.
+
 ## Three result sources (always labeled in the popup)
 
 | Mode | Needs backend | What it does |
 | --- | --- | --- |
 | Mock | no | Built-in synthetic samples for every UI state. Not a check. |
-| Benchmark demo | yes | Replays saved fixture results by claim ID. Not new inference. |
+| Benchmark demo | yes | Default: replays synthetic fixtures. With `--baseline-dir`: runs the baseline model on a chosen dev claim. Labeled either way. |
 | Live | yes | Returns "not enough sources": no retrieval path exists for new claims. |
 
 ## Known limits
@@ -38,6 +69,6 @@ Routes: `GET /health`, `GET /benchmark/claims`, `POST /verify`.
 - Fixtures in `apps/backend/fixtures/demo_claims.json` are synthetic (example.com
   URLs), not AVeriTeC records. Replace with saved benchmark predictions once B or C
   provides them, via an `Adapter` in `apps/backend/server.py`.
-- The backend adds an optional `provenance` field (`fixture_replay`) to
-  responses. This is an additive proposal to the contract, not yet agreed.
+- The backend adds an optional `provenance` field (`fixture_replay` or
+  `baseline_distilbert_bm25_top3`) to responses. This is an additive proposal to the contract, not yet agreed.
 - Nothing here shows that the interface improves user decisions.

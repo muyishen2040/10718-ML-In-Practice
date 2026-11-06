@@ -8,6 +8,7 @@ import argparse
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 LABELS = ("Supported", "Refuted", "Not Enough Evidence", "Conflicting Evidence")
 MAX_EVIDENCE = 3
@@ -34,8 +35,11 @@ class FixtureReplayAdapter(Adapter):
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         self.records = {r["claim_id"]: r for r in data["claims"]}
 
-    def list_claims(self):
-        return [{"claim_id": k, "claim": v["claim"]} for k, v in self.records.items()]
+    def list_claims(self, query="", limit=50):
+        q = (query or "").strip().lower()
+        rows = [{"claim_id": k, "claim": v["claim"]} for k, v in self.records.items()
+                if q in k.lower() or q in v["claim"].lower()]
+        return rows[:limit]
 
     def get(self, claim_id):
         return self.records.get(claim_id)
@@ -112,8 +116,14 @@ def make_handler(adapter):
         def do_GET(self):
             if self.path == "/health":
                 self._send(200, {"ok": True, "adapter": adapter.name})
-            elif self.path == "/benchmark/claims":
-                self._send(200, {"claims": adapter.list_claims(), "provenance": adapter.name})
+            elif urlparse(self.path).path == "/benchmark/claims":
+                params = parse_qs(urlparse(self.path).query)
+                query = (params.get("q") or [""])[0][:200]
+                try:
+                    limit = max(1, min(100, int((params.get("limit") or ["50"])[0])))
+                except ValueError:
+                    limit = 50
+                self._send(200, {"claims": adapter.list_claims(query, limit), "provenance": adapter.name})
             else:
                 self._send(404, error_response(None, "Not found."))
 
@@ -143,9 +153,19 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--baseline-dir", help="Saved baseline run folder (final_model/, transformer_run_config.json)")
+    parser.add_argument("--dev-rankings", help="Saved dev_rankings.jsonl (BM25 top 20)")
+    parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
-    server = ThreadingHTTPServer((args.host, args.port), make_handler(FixtureReplayAdapter()))
-    print(f"Backend on http://{args.host}:{args.port} (adapter: fixture_replay)")
+    if args.baseline_dir or args.dev_rankings:
+        if not (args.baseline_dir and args.dev_rankings):
+            parser.error("--baseline-dir and --dev-rankings must be given together")
+        from baseline_adapter import BaselineAdapter
+        adapter = BaselineAdapter.from_paths(args.baseline_dir, args.dev_rankings, args.device)
+    else:
+        adapter = FixtureReplayAdapter()
+    server = ThreadingHTTPServer((args.host, args.port), make_handler(adapter))
+    print(f"Backend on http://{args.host}:{args.port} (adapter: {adapter.name})")
     server.serve_forever()
 
 

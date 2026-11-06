@@ -2,7 +2,7 @@
 
 - Owner / workstream: Teammate A, interface/extension
 - Written date / run date: 2026-11-06 / 2026-11-06
-- Completion: completed for the mock stage; real adapter not yet integrated
+- Completion: mock stage completed; baseline adapter added for benchmark dev claims
 - Git branch and commit: `team/teammate-a-interface`, based on `origin/main`
   `0a3a858`; the work is the tip of that branch. Branch not yet pushed.
 - Hypothesis and the single change being tested: none. This is a product
@@ -38,7 +38,21 @@
   text on a news page, mock mode, benchmark replay with the backend running,
   and benchmark mode locking the claim box to the demo claim. Google Docs does
   not expose selected text; use Paste from clipboard there.
-- Not tested: dark mode appearance, Paste from clipboard button, any real adapter.
+- Later added `apps/backend/baseline_adapter.py`: runs the saved BM25-top-3
+  DistilBERT baseline (Drive: `outputs/initial_ml_solution_rerun_bs16/transformer/bm25_top3/final_model`)
+  on the 500 official dev claims, using the saved top-3 BM25 passages from
+  `bm25/dev_bm25_top20_v2/dev_rankings.jsonl`. Inputs are built as in
+  `scripts/train_transformer_verifier.py::compose_text`; gold labels are not read;
+  claims without passages return `insufficient_sources`. Started with
+  `--baseline-dir` and `--dev-rankings` (see SETUP.md). 13 backend tests pass,
+  including one real-model test; one claim (`averitec:dev:00000`) was checked end
+  to end in the popup (Refuted, three passages). The baseline's own dev result is
+  macro-F1 0.347, accuracy 0.52 on the 500 dev claims, so single outputs are not
+  evidence of quality; only a handful of claims were viewed here.
+- Popup redesigned (segmented mode control, verdict banner, collapsible sources);
+  checked in a 400 px browser tab in light and dark mode.
+- Not tested: Paste from clipboard button, redesigned popup inside installed Chrome
+  for all states, any live retrieval.
 
 ## Interpretation and next action
 
