@@ -1,0 +1,101 @@
+{
+  "note": "SYNTHETIC UI fixtures. Claims, passages and URLs are made up for interface testing; they are NOT AVeriTeC data and not model output.",
+  "claims": [
+    {
+      "claim_id": "fixture:supported",
+      "claim": "Water boils at a lower temperature at high altitude.",
+      "verdict": "Supported",
+      "explanation": "The supplied passages say lower air pressure at altitude lowers the boiling point.",
+      "uncertainty_note": "Based only on the passages shown.",
+      "evidence": [
+        {
+          "passage_id": "fixture-p1",
+          "text": "At higher elevations atmospheric pressure is lower, so water boils below 100 C.",
+          "url": "https://example.com/altitude-boiling",
+          "rank": 1
+        },
+        {
+          "passage_id": "fixture-p2",
+          "text": "Cooking times increase in mountain towns because water boils at a lower temperature.",
+          "url": "https://example.com/mountain-cooking",
+          "rank": 2
+        }
+      ]
+    },
+    {
+      "claim_id": "fixture:refuted",
+      "claim": "The Great Wall of China is visible to the naked eye from the Moon.",
+      "verdict": "Refuted",
+      "explanation": "The passages state the wall cannot be seen from the Moon without aid.",
+      "uncertainty_note": "Based only on the passages shown.",
+      "evidence": [
+        {
+          "passage_id": "fixture-p1",
+          "text": "Astronauts report that the Great Wall is not visible from lunar distance.",
+          "url": "https://example.com/wall-moon",
+          "rank": 1
+        },
+        {
+          "passage_id": "fixture-p2",
+          "text": "At that distance no human-made structure is individually discernible.",
+          "url": "https://example.com/moon-distance",
+          "rank": 2
+        },
+        {
+          "passage_id": "fixture-p3",
+          "text": "The wall is long but narrow, which makes it hard to see even from low orbit.",
+          "url": "https://example.com/wall-orbit",
+          "rank": 3
+        }
+      ]
+    },
+    {
+      "claim_id": "fixture:nei",
+      "claim": "A new bridge in the town will open next spring.",
+      "verdict": "Not Enough Evidence",
+      "explanation": "The supplied passages do not give an opening date.",
+      "uncertainty_note": "Additional sources would be needed.",
+      "evidence": [
+        {
+          "passage_id": "fixture-p1",
+          "text": "Construction on the bridge began last year.",
+          "url": "https://example.com/bridge-start",
+          "rank": 1
+        }
+      ]
+    },
+    {
+      "claim_id": "fixture:conflicting",
+      "claim": "The new policy reduced local unemployment.",
+      "verdict": "Conflicting Evidence",
+      "explanation": "One passage reports a drop and another reports no change.",
+      "uncertainty_note": "The sources disagree; read both before deciding.",
+      "evidence": [
+        {
+          "passage_id": "fixture-p1",
+          "text": "Unemployment fell two points after the policy took effect.",
+          "url": "https://example.com/policy-drop",
+          "rank": 1
+        },
+        {
+          "passage_id": "fixture-p2",
+          "text": "Analysts found no change once seasonal hiring was removed.",
+          "url": "https://example.com/policy-flat",
+          "rank": 2
+        }
+      ]
+    },
+    {
+      "claim_id": "fixture:no-sources",
+      "claim": "A claim with no saved passages.",
+      "status": "insufficient_sources",
+      "explanation": "No usable source passages were available for this claim.",
+      "evidence": []
+    },
+    {
+      "claim_id": "fixture:error",
+      "claim": "A claim that triggers a simulated backend failure.",
+      "simulate": "error"
+    }
+  ]
+}

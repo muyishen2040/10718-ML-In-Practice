@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claim Check</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <h1>Claim Check</h1>
+    <p class="sub">A preliminary screen, not a final answer. You decide what to trust or share.</p>
+  </header>
+
+  <section>
+    <label for="mode">Source of results</label>
+    <select id="mode">
+      <option value="mock">Mock (built-in samples, no server)</option>
+      <option value="benchmark">Benchmark demo (saved results, needs server)</option>
+      <option value="live">Live (not available yet)</option>
+    </select>
+    <p id="modeHint" class="hint"></p>
+
+    <div id="scenarioRow" hidden>
+      <label for="scenario">Sample outcome</label>
+      <select id="scenario"></select>
+    </div>
+
+    <label for="claim">Claim</label>
+    <textarea id="claim" rows="3" maxlength="2000" placeholder="Select text on a page, or type or paste a claim"></textarea>
+    <div class="row">
+      <button id="useSelection" type="button" class="secondary">Use selected text</button>
+      <button id="pasteClip" type="button" class="secondary">Paste from clipboard</button>
+      <button id="check" type="button">Check this claim</button>
+    </div>
+  </section>
+
+  <section id="result" aria-live="polite"></section>
+
+  <details>
+    <summary>Backend settings</summary>
+    <label for="backend">Backend URL</label>
+    <input id="backend" value="http://127.0.0.1:8000">
+  </details>
+
+  <script src="mock.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
