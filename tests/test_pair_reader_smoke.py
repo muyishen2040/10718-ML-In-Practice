@@ -18,6 +18,24 @@ from src.verification.pair_training import train_reader
 from src.verification.evidence_experiments import fast_aggregate, frozen_distil, compare_results
 
 
+def test_pair_reader_unlabeled_inference_matches_labeled_inputs(tmp_path):
+    from src.verification.pair_reader import PairDataset, PairCollator
+    directory = tiny_nli(tmp_path)
+    tokenizer = BertTokenizerFast.from_pretrained(directory)
+    record = {'claim': 'claim event occurred', 'retrieved_evidence': [{'text': 'event occurred'}]}
+    dataset = PairDataset([record, {**record, 'label': 'Supported'}], tokenizer, max_length=64, show_progress=False)
+    collator = PairCollator(tokenizer)
+    unlabeled, labeled = collator([dataset[0]]), collator([dataset[1]])
+    assert 'labels' not in unlabeled
+    for key, value in unlabeled.items():
+        torch.testing.assert_close(value, labeled[key])
+    with pytest.raises(ValueError, match='mix labeled'):
+        collator([dataset[0], dataset[1]])
+    model = EvidencePairReader.from_nli(str(directory)).eval()
+    with torch.inference_mode():
+        torch.testing.assert_close(model(**unlabeled).logits, model(**labeled).logits)
+
+
 def tiny_nli(tmp_path, kind="bert"):
     directory = tmp_path / "tiny_nli"
     directory.mkdir()

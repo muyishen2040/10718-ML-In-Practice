@@ -204,6 +204,15 @@ This establishes serving mechanics. No new accuracy result, completed user study
 or installed-Chrome usability result is claimed. Details are in
 [the interface update](team_updates/2026-11-10_colab-cpu-extension.md).
 
+The subsequent [model-selector update](team_updates/2026-11-10_model-selector.md)
+adds four CPU-serving choices: DistilBERT with BM25, BGE or fused evidence, and
+the corrected NLI reader (`raw_sample_d01`). The DistilBERT choices share weights
+and keep separate evidence/prediction caches. Real Colab requests exercised all
+four; browser checks covered selection, persistence and delayed-response
+handling. The original BM25 option remains the default. This is a serving change
+with no new training or accuracy claim; restart the kernel and run the updated
+portable notebook before reconnecting the relay.
+
 Repository cleanup on November 4 moved 11 older notebooks into
 `notebooks/archive/` and long historical specifications into `docs/archive/`.
 Current catalogs link to the new locations. A second cleanup removed the root

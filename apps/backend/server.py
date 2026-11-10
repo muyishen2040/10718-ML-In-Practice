@@ -59,6 +59,25 @@ def error_response(mode, message):
             "explanation": message, "uncertainty_note": None, "evidence": []}
 
 
+def model_catalog(adapter):
+    if callable(getattr(adapter, 'list_models', None)):
+        models = adapter.list_models()
+    else:
+        models = [{'id': getattr(adapter, 'model_id', adapter.name),
+                   'label': getattr(adapter, 'model_label', 'Synthetic demo fixtures' if adapter.name == 'fixture_replay' else adapter.name),
+                   'description': getattr(adapter, 'model_description', ''), 'available': True}]
+    return {'default_model_id': getattr(adapter, 'default_model_id', models[0]['id']), 'models': models}
+
+
+def select_adapter(adapter, model_id):
+    if callable(getattr(adapter, 'select_model', None)):
+        return adapter.select_model(model_id)
+    expected = getattr(adapter, 'model_id', adapter.name)
+    if model_id is not None and model_id != expected:
+        raise ValueError('Unknown model_id')
+    return adapter
+
+
 def handle_verify(payload, adapter):
     """Return (http_status, response_dict). Pure function so tests need no socket."""
     if not isinstance(payload, dict):
@@ -78,8 +97,14 @@ def handle_verify(payload, adapter):
                      "uncertainty_note": "Nothing was checked. Do not treat this as a result.",
                      "evidence": []}
     if mode == "benchmark":
+        try:
+            selected = select_adapter(adapter, payload.get('model_id'))
+        except ValueError:
+            return 400, error_response(mode, 'Unknown model selection. Choose an available model.')
+        except LookupError as error:
+            return 503, error_response(mode, str(error))
         claim_id = payload.get("claim_id")
-        record = adapter.get(claim_id) if isinstance(claim_id, str) else None
+        record = selected.get(claim_id) if isinstance(claim_id, str) else None
         if record is None:
             return 404, error_response(mode, "Unknown benchmark claim_id.")
         if record.get("simulate") == "error":
@@ -92,7 +117,9 @@ def handle_verify(payload, adapter):
                      "verdict": verdict, "explanation": record.get("explanation"),
                      "uncertainty_note": record.get("uncertainty_note"),
                      "evidence": normalize_evidence(record.get("evidence", [])),
-                     "provenance": adapter.name}
+                     "provenance": selected.name,
+                     'model_id': getattr(selected, 'model_id', selected.name),
+                     'model_label': getattr(selected, 'model_label', 'Synthetic demo fixtures' if selected.name == 'fixture_replay' else selected.name)}
     return 400, error_response(mode if isinstance(mode, str) else None,
                                "mode must be 'benchmark' or 'live'.")
 
@@ -115,7 +142,10 @@ def make_handler(adapter):
 
         def do_GET(self):
             if self.path == "/health":
-                self._send(200, {"ok": True, "adapter": adapter.name})
+                self._send(200, {"ok": True, "adapter": adapter.name,
+                    'model_selection': bool(getattr(adapter, 'model_selection', False))})
+            elif self.path == '/models':
+                self._send(200, model_catalog(adapter))
             elif urlparse(self.path).path == "/benchmark/claims":
                 params = parse_qs(urlparse(self.path).query)
                 query = (params.get("q") or [""])[0][:200]
@@ -156,8 +186,15 @@ def main():
     parser.add_argument("--baseline-dir", help="Saved baseline run folder (final_model/, transformer_run_config.json)")
     parser.add_argument("--dev-rankings", help="Saved dev_rankings.jsonl (BM25 top 20)")
     parser.add_argument("--device", default="cpu")
+    parser.add_argument('--serving-cache', type=Path, help='Staged cache with serving_manifest.json and selectable models')
     args = parser.parse_args()
-    if args.baseline_dir or args.dev_rankings:
+    if args.serving_cache:
+        if args.baseline_dir or args.dev_rankings:
+            parser.error('--serving-cache cannot be combined with single-baseline paths')
+        from model_registry import load_registry
+        manifest = json.loads((args.serving_cache / 'serving_manifest.json').read_text())
+        adapter = load_registry(args.serving_cache, manifest, device=args.device)
+    elif args.baseline_dir or args.dev_rankings:
         if not (args.baseline_dir and args.dev_rankings):
             parser.error("--baseline-dir and --dev-rankings must be given together")
         from baseline_adapter import BaselineAdapter

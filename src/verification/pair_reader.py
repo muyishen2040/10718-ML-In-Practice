@@ -125,11 +125,11 @@ class EvidencePairReader(PreTrainedModel):
 
 
 class PairDataset(torch.utils.data.Dataset):
-    def __init__(self, records, tokenizer, *, max_length=384, claim_budget=96):
+    def __init__(self, records, tokenizer, *, max_length=384, claim_budget=96, show_progress=True):
         from src.utils.progress import progress
 
         self.records, self.features = records, []
-        with progress(total=len(records), description="Encode evidence pairs", unit="claim", leave=False) as bar:
+        with progress(total=len(records), description="Encode evidence pairs", unit="claim", leave=False, disable=not show_progress) as bar:
             for record in records:
                 hypothesis = tokenizer.decode(tokenizer.encode(record["claim"], add_special_tokens=False)[:claim_budget], skip_special_tokens=True)
                 evidence = (record.get("retrieved_evidence") or [])[:3]
@@ -141,8 +141,11 @@ class PairDataset(torch.utils.data.Dataset):
                     quality.append(item.get("quality", [0.0] * len(QUALITY_NAMES)))
                     p = item.get("nli_probabilities", {"entailment": 0.0, "contradiction": 0.0, "neutral": 1.0})
                     teacher.append([p[k] for k in ("entailment", "contradiction", "neutral")])
-                self.features.append({"pairs": pairs, "evidence_mask": mask, "quality": quality,
-                                      "teacher_probabilities": teacher, "labels": CANONICAL_LABELS.index(record["label"])})
+                feature = {"pairs": pairs, "evidence_mask": mask, "quality": quality,
+                           "teacher_probabilities": teacher}
+                if record.get('label') is not None:
+                    feature['labels'] = CANONICAL_LABELS.index(record['label'])
+                self.features.append(feature)
                 bar.update(1)
 
     def __len__(self):
@@ -161,5 +164,9 @@ class PairCollator:
         result = {k: v.reshape(len(rows), 3, -1) for k, v in padded.items()}
         for key in ("evidence_mask", "quality", "teacher_probabilities"):
             result[key] = torch.tensor([r[key] for r in rows], dtype=torch.float32)
-        result["labels"] = torch.tensor([r["labels"] for r in rows], dtype=torch.long)
+        labeled = ['labels' in row for row in rows]
+        if any(labeled) and not all(labeled):
+            raise ValueError('Do not mix labeled training rows and unlabeled inference rows')
+        if all(labeled):
+            result["labels"] = torch.tensor([r["labels"] for r in rows], dtype=torch.long)
         return result

@@ -7,12 +7,17 @@ import json
 import os
 from pathlib import Path
 import shutil
+import sys
 import threading
 import time
 from http.server import ThreadingHTTPServer
 
 RUN_PATH = Path("outputs/initial_ml_solution_rerun_bs16/transformer/bm25_top3")
 RANKINGS_PATH = Path("outputs/bm25/dev_bm25_top20_v2/dev_rankings.jsonl")
+BGE_PATH = Path('outputs/initial_ml_solution_rerun_bs16/dense/dev_bge_small_v15/dev_rankings.jsonl')
+FUSION_PATH = Path('outputs/initial_ml_solution_rerun_bs16/hybrid/dev_rrf60/hybrid_rankings.jsonl')
+NLI_RUN_PATH = Path('outputs/evidence_reader_followup_v2/pair/raw_sample_d01')
+NLI_PREP_PATH = Path('outputs/evidence_aware_reader_v1/prepared')
 _ACTIVE = None
 
 
@@ -39,16 +44,29 @@ def stage_artifacts(data_root, cache_root):
         raise ValueError("Use a runtime cache outside the shared input folder")
     # final_model contains the saved tokenizer and weights. Training checkpoint
     # subdirectories and the full evidence corpus are deliberately not copied.
-    sources = [path for path in sorted(model.iterdir()) if path.is_file()]
-    sources += [run / "transformer_run_config.json", data_root / RANKINGS_PATH]
+    sources = [(path, Path('baseline/final_model') / path.name) for path in sorted(model.iterdir()) if path.is_file()]
+    sources += [(run / 'transformer_run_config.json', Path('baseline/transformer_run_config.json')),
+                (data_root / RANKINGS_PATH, Path('dev_rankings.jsonl'))]
+    available = {'distilbert_bm25': True}
+    for model_id, source, name in (('distilbert_bge', data_root / BGE_PATH, 'bge_rankings.jsonl'),
+                                    ('distilbert_fusion', data_root / FUSION_PATH, 'fusion_rankings.jsonl')):
+        available[model_id] = source.is_file()
+        if source.is_file():
+            sources.append((source, Path(name)))
+    nli_run, nli_prep = data_root / NLI_RUN_PATH, data_root / NLI_PREP_PATH
+    nli_required = [nli_run / 'reader_run.json', nli_run / 'final_model/config.json',
+                    nli_run / 'final_model/model.safetensors', nli_prep / 'raw/dev_rankings.jsonl', nli_prep / 'preparation.json']
+    available['nli_reader'] = all(path.is_file() for path in nli_required)
+    if available['nli_reader']:
+        sources += [(path, Path('nli_reader/final_model') / path.name) for path in sorted((nli_run / 'final_model').iterdir()) if path.is_file()]
+        sources += [(nli_run / 'reader_run.json', Path('nli_reader/reader_run.json')),
+                    (nli_prep / 'raw/dev_rankings.jsonl', Path('nli_rankings.jsonl')),
+                    (nli_prep / 'preparation.json', Path('nli_preparation.json'))]
     manifest_path = cache_root / "serving_manifest.json"
     previous = json.loads(manifest_path.read_text()) if manifest_path.is_file() else {}
     previous = previous if previous.get("data_root") == str(data_root) else {}
-    manifest = {"data_root": str(data_root), "files": {}}
-    for source in sources:
-        relative = (Path("baseline/final_model") / source.name if source.parent == model
-                    else Path("baseline/transformer_run_config.json") if source.parent == run
-                    else Path("dev_rankings.jsonl"))
+    manifest = {"data_root": str(data_root), "files": {}, 'available_pipelines': available}
+    for source, relative in sources:
         target = cache_root / relative
         stat = source.stat()
         fingerprint = {"source": str(source), "size": stat.st_size, "mtime_ns": stat.st_mtime_ns}
@@ -84,9 +102,12 @@ def _module(name, filename):
 
 class SerializedAdapter:
     """Keep concurrent requests from oversubscribing a small CPU runtime."""
-    def __init__(self, adapter):
+    def __init__(self, adapter, lock=None):
         self.adapter, self.name = adapter, adapter.name
-        self.lock = threading.Lock()
+        self.lock = lock or threading.Lock()
+
+    def __getattr__(self, name):
+        return getattr(self.adapter, name)
 
     def get(self, claim_id):
         with self.lock:
@@ -94,6 +115,14 @@ class SerializedAdapter:
 
     def list_claims(self, query="", limit=50):
         return self.adapter.list_claims(query, limit)
+
+    def select_model(self, model_id=None):
+        selector = getattr(self.adapter, 'select_model', None)
+        if selector:
+            return SerializedAdapter(selector(model_id), self.lock)
+        if model_id is not None and model_id != getattr(self.adapter, 'model_id', self.name):
+            raise ValueError('Unknown model_id')
+        return self
 
 
 def start_backend(data_root, cache_root="/content/claim_check_serving", *, port=8000,
@@ -120,10 +149,16 @@ def start_backend(data_root, cache_root="/content/claim_check_serving", *, port=
     if adapter_factory is None:
         import torch
         torch.set_num_threads(cpu_threads)
-        adapter_factory = _module("_claim_check_baseline", "baseline_adapter.py").BaselineAdapter.from_paths
+        directory = str(Path(__file__).parent)
+        if directory not in sys.path:
+            sys.path.insert(0, directory)
     started = time.monotonic()
     print("Loading the saved model and rankings on CPU...", flush=True)
-    adapter = SerializedAdapter(adapter_factory(baseline, rankings, "cpu"))
+    if adapter_factory is None:
+        adapter = _module('_claim_check_registry', 'model_registry.py').load_registry(cache_root, manifest, device='cpu')
+    else:
+        adapter = adapter_factory(baseline, rankings, 'cpu')
+    adapter = SerializedAdapter(adapter)
     server_module = _module("_claim_check_http", "server.py")
     server = ThreadingHTTPServer(("127.0.0.1", port), server_module.make_handler(adapter))
     thread = threading.Thread(target=server.serve_forever, name="claim-check-backend", daemon=True)
@@ -132,6 +167,8 @@ def start_backend(data_root, cache_root="/content/claim_check_serving", *, port=
             "device": "cpu", "loaded_in_seconds": round(time.monotonic() - started, 2),
             "claim_count": len(adapter.list_claims("", 10000)), "cache_root": str(Path(cache_root)),
             "manifest": str(Path(cache_root) / "serving_manifest.json"), "reused": False}
+    if callable(getattr(adapter, 'list_models', None)):
+        info['models'] = adapter.list_models()
     _ACTIVE = {"server": server, "thread": thread, "adapter": adapter,
                "settings": settings, "info": info}
     print("Private backend ready:", info["url"], flush=True)

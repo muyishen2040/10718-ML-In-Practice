@@ -53,12 +53,27 @@ def lean_note(probabilities):
 class BaselineAdapter:
     name = "baseline_distilbert_bm25_top3"
 
-    def __init__(self, rankings, predict_fn):
+    def __init__(self, rankings, predict_fn, *, model_id='distilbert_bm25',
+                 model_label='DistilBERT + BM25', model_description='Keyword-selected evidence.',
+                 provenance=None, model_note=BASELINE_NOTE):
         """rankings: {claim_id: row with 'claim' and 'retrieved'}.
         predict_fn(claim, passages) -> four probabilities in LABELS order."""
         self.rankings = rankings
         self.predict_fn = predict_fn
         self._cache = {}
+        self.model_id = model_id
+        self.model_label = model_label
+        self.model_description = model_description
+        self.model_note = model_note
+        if provenance:
+            self.name = provenance
+        self.explanation_text = 'A classifier read the claim and the three passages shown and chose this label. It does not give reasons.'
+
+    def with_evidence(self, rankings_path, *, model_id, model_label, description, provenance):
+        """Reuse classifier weights while keeping evidence and prediction caches separate."""
+        return BaselineAdapter(load_rankings(rankings_path), self.predict_fn,
+            model_id=model_id, model_label=model_label, model_description=description,
+            provenance=provenance, model_note='This uses the BM25-trained classifier with a different evidence selection. Treat its output as preliminary.')
 
     @classmethod
     def from_paths(cls, baseline_dir, rankings_path, device="cpu"):
@@ -114,7 +129,6 @@ class BaselineAdapter:
         probs = self.predict_fn(claim, passages)
         verdict = LABELS[max(range(4), key=lambda i: probs[i])]
         return {"claim_id": row["claim_id"], "claim": claim, "status": "completed", "verdict": verdict,
-                "explanation": "A baseline classifier read the claim and the three passages shown "
-                               "and chose this label. It does not give reasons.",
-                "uncertainty_note": lean_note(probs) + " " + BASELINE_NOTE,
+                "explanation": self.explanation_text,
+                "uncertainty_note": lean_note(probs) + " " + self.model_note,
                 "evidence": evidence}

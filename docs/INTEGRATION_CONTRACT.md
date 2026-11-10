@@ -19,6 +19,14 @@ its saved candidate evidence on the backend:
 {"mode": "benchmark", "claim_id": "averitec:dev:00000"}
 ```
 
+The local-model backend also supports `GET /models` to discover selectable
+pipelines. A benchmark request may include `model_id` (`distilbert_bm25`,
+`distilbert_bge`, `distilbert_fusion`, or `nli_reader`). Omitting it keeps the
+BM25 default. Unknown IDs return 400; unavailable choices return 503. Responses
+identify the selected pipeline with `model_id`, `model_label` and `provenance`.
+The first three share a BM25-trained classifier; only their evidence changes.
+This selector is for comparing experimental pipelines during supervised tests.
+
 A live request needs a separately implemented retrieval path for new claims:
 
 ```json

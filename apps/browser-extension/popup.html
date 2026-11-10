@@ -21,6 +21,12 @@
     </div>
     <p id="modeHint" class="hint"></p>
 
+    <div id="modelRow" hidden>
+      <label for="model">Model / evidence pipeline</label>
+      <select id="model" aria-describedby="modelHint" disabled></select>
+      <p id="modelHint" class="hint">Connecting to the backend…</p>
+    </div>
+
     <div id="scenarioRow" hidden>
       <label for="scenario" id="scenarioLabel">Sample outcome</label>
       <input id="search" type="search" placeholder="Search demo claims" hidden>

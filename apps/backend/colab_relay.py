@@ -27,7 +27,7 @@ def remote_code(method, path, body, port):
     if method not in ("GET", "POST") or not 1 <= port <= 65535:
         raise ValueError("Invalid remote request")
     route = urlparse(path)
-    allowed = (method == "GET" and route.path in ("/health", "/benchmark/claims")) or (method == "POST" and path == "/verify")
+    allowed = (method == "GET" and route.path in ("/health", "/models", "/benchmark/claims")) or (method == "POST" and path == "/verify")
     if not allowed or route.netloc or route.scheme or not path.startswith("/"):
         raise ValueError("Only the benchmark backend routes are available")
     request = base64.b64encode(json.dumps({"method": method, "path": path, "body": body}).encode()).decode()
@@ -67,10 +67,13 @@ class CliBridge:
         self.port, self.timeout, self.runner = port, timeout, runner
         self.lock = threading.Lock()
         self.catalog = None
+        self.models = None
 
     def request(self, method, path, body=None):
         code = remote_code(method, path, body, self.port)
         route = urlparse(path)
+        if method == 'GET' and path == '/models' and self.models is not None:
+            return 200, self.models
         # Fetch the catalog once; searching from the popup should not execute
         # new remote Python on each keystroke.
         if method == "GET" and route.path == "/benchmark/claims" and self.catalog is not None:
@@ -100,8 +103,14 @@ class CliBridge:
         status, catalog = self.request("GET", "/benchmark/claims?limit=1000")
         if status != 200 or not isinstance(catalog.get("claims"), list):
             raise RuntimeError("Could not load the benchmark catalog")
-        if health.get("adapter") != "baseline_distilbert_bm25_top3":
+        if health.get("adapter") not in ("baseline_distilbert_bm25_top3", "model_registry"):
             raise RuntimeError("Expected the trained baseline adapter, not synthetic fixture replay")
+        if health.get('model_selection'):
+            status, models = self.request('GET', '/models')
+            options = models.get('models', [])
+            if status != 200 or not options or not any(item.get('id') == models.get('default_model_id') and item.get('available') for item in options):
+                raise RuntimeError('Could not load available model choices')
+            self.models = models
         self.catalog = catalog
         return health
 

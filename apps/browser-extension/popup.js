@@ -2,7 +2,8 @@
 
 const $ = id => document.getElementById(id);
 const els = { search: $("search"), mode: $("mode"), hint: $("modeHint"), scenarioRow: $("scenarioRow"), scenario: $("scenario"),
-  claim: $("claim"), check: $("check"), useSel: $("useSelection"), result: $("result"), backend: $("backend") };
+  claim: $("claim"), check: $("check"), useSel: $("useSelection"), result: $("result"), backend: $("backend"),
+  model: $("model"), modelRow: $("modelRow"), modelHint: $("modelHint") };
 
 const HINTS = {
   mock: "Built-in samples for trying the interface. Not a real check.",
@@ -23,6 +24,62 @@ const MAX_SOURCES = 3;
 function domainOf(href) { try { return new URL(href).hostname.replace(/^www\./, ""); } catch { return href; } }
 
 let benchmarkClaims = []; // [{claim_id, claim}]
+let models = [], preferredModel = "distilbert_bm25", revision = 0, catalogRequest = 0, modelRequest = 0;
+
+async function saveSettings() {
+  const settings = { mode: els.mode.value, backend: els.backend.value, model: preferredModel };
+  try {
+    if (typeof chrome !== "undefined" && chrome.storage?.local) await chrome.storage.local.set({ claimCheckSettings: settings });
+    else localStorage.setItem("claimCheckSettings", JSON.stringify(settings));
+  } catch { /* Preferences are optional; verification still works. */ }
+}
+
+function clearResult() {
+  revision++;
+  els.result.replaceChildren();
+  els.check.disabled = els.mode.value === "benchmark" && !models.some(m => m.id === els.model.value && m.available);
+}
+
+function describeModel() {
+  const picked = models.find(m => m.id === els.model.value);
+  els.modelHint.textContent = picked ? picked.description : "No model available.";
+}
+
+async function loadModels() {
+  const current = ++modelRequest, base = els.backend.value.replace(/\/+$/, "");
+  models = [];
+  els.model.disabled = true;
+  els.model.replaceChildren(new Option("Loading models…", ""));
+  els.check.disabled = true;
+  try {
+    const response = await fetch(base + "/models");
+    if (!response.ok) throw new Error("No model catalog");
+    const data = await response.json();
+    if (current !== modelRequest || els.mode.value !== 'benchmark') return;
+    if (!Array.isArray(data.models) || !data.models.length) throw new Error("Empty model catalog");
+    models = data.models;
+    els.model.replaceChildren(...models.map(m => {
+      const option = new Option(m.label + (m.available ? "" : " (unavailable)"), m.id);
+      option.disabled = !m.available;
+      option.title = m.unavailable_reason || m.description;
+      return option;
+    }));
+    const chosen = models.find(m => m.id === preferredModel && m.available)
+      || models.find(m => m.id === data.default_model_id && m.available);
+    if (!chosen) throw new Error("No model loaded");
+    els.model.value = chosen.id;
+    preferredModel = chosen.id;
+    els.model.disabled = false;
+    els.check.disabled = false;
+    describeModel();
+    saveSettings();
+  } catch {
+    if (current !== modelRequest || els.mode.value !== 'benchmark') return;
+    models = [];
+    els.model.replaceChildren(new Option("Backend unavailable", ""));
+    els.modelHint.textContent = "Start or update the backend, then reopen Benchmark.";
+  }
+}
 
 function el(tag, cls, text) {
   const n = document.createElement(tag);
@@ -52,7 +109,8 @@ function renderMessage(kind, title, body, badge) {
 }
 
 function renderResponse(r) {
-  const badge = PROVENANCE_BADGE[r.provenance] || MODE_BADGE[r.mode] || "";
+  const badge = r.mode === "benchmark" && r.model_label && r.provenance !== "fixture_replay"
+    ? r.model_label + " · benchmark claim" : PROVENANCE_BADGE[r.provenance] || MODE_BADGE[r.mode] || "";
   if (r.status === "insufficient_sources") {
     return renderMessage("warn", "Not enough sources to check this",
       (r.explanation || "") + (r.uncertainty_note ? " " + r.uncertainty_note : ""), badge);
@@ -116,6 +174,7 @@ async function postVerify(body) {
 }
 
 async function runCheck() {
+  const current = ++revision;
   const mode = els.mode.value;
   const claim = els.claim.value.trim();
   if (!claim) return renderMessage("warn", "Enter a claim first", "Select text on a page or type one above.");
@@ -127,23 +186,33 @@ async function runCheck() {
     else if (mode === "live") r = await postVerify({ mode: "live", claim, page_url: null });
     else {
       const picked = benchmarkClaims.find(c => c.claim_id === els.scenario.value);
-      r = picked ? await postVerify({ mode: "benchmark", claim_id: picked.claim_id })
+      r = picked ? await postVerify({ mode: "benchmark", claim_id: picked.claim_id, model_id: els.model.value })
         : { mode, status: "error", verdict: null, evidence: [], explanation: "Choose a demo claim." };
     }
+    if (current !== revision) return;
     renderResponse(r);
     els.result.scrollIntoView({ block: "start", behavior: "smooth" }); // popup is short: bring the verdict into view
-  } finally { els.check.disabled = false; }
+  } finally { if (current === revision) els.check.disabled = false; }
 }
 
 async function loadBenchmarkClaims() {
+  if (els.mode.value !== "benchmark") return;
+  const current = ++catalogRequest;
+  clearResult();
+  els.claim.value = "";
+  els.check.disabled = true;
   els.scenario.replaceChildren();
   let reachable = true;
   try {
     const base = els.backend.value.replace(/\/+$/, "");
     const q = encodeURIComponent(els.search.value.trim());
     const data = await (await fetch(base + "/benchmark/claims?limit=50&q=" + q)).json();
+    if (current !== catalogRequest || els.mode.value !== 'benchmark') return;
     benchmarkClaims = data.claims || [];
-  } catch { benchmarkClaims = []; reachable = false; }
+  } catch {
+    if (current !== catalogRequest || els.mode.value !== 'benchmark') return;
+    benchmarkClaims = []; reachable = false;
+  }
   if (!reachable) {
     renderMessage("error", "Backend not reachable", "Start it with: python3 apps/backend/server.py", MODE_BADGE.benchmark);
     return;
@@ -155,10 +224,12 @@ async function loadBenchmarkClaims() {
   }
   benchmarkClaims.forEach(c => els.scenario.append(new Option(c.claim_id + " · " + c.claim.slice(0, 60), c.claim_id)));
   els.claim.value = benchmarkClaims[0].claim;
-  els.result.replaceChildren();
+  clearResult();
 }
 
 function applyMode() {
+  modelRequest++;
+  catalogRequest++;
   const mode = els.mode.value;
   els.hint.textContent = HINTS[mode];
   els.scenarioRow.hidden = mode === "live";
@@ -167,10 +238,13 @@ function applyMode() {
   els.claim.placeholder = mode === "benchmark" ? "Pick a demo claim above"
     : "Select text on a page, or type or paste a claim";
   $("scenarioLabel").textContent = mode === "mock" ? "Sample outcome" : "Demo claim";
-  els.result.replaceChildren();
+  clearResult();
+  els.modelRow.hidden = mode !== "benchmark";
+  document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.mode === mode)));
   if (mode === "mock") {
     els.scenario.replaceChildren(...Object.entries(MOCK_SCENARIOS).map(([k, v]) => new Option(v.label, k)));
   } else if (mode === "benchmark") {
+    loadModels();
     loadBenchmarkClaims();
   }
 }
@@ -215,16 +289,39 @@ document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click"
   els.mode.value = b.dataset.mode;
   document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-checked", String(x === b)));
   applyMode();
+  saveSettings();
 }));
 let searchTimer;
 els.search.addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadBenchmarkClaims, 250); });
 els.scenario.addEventListener("change", () => {
+  clearResult();
   if (els.mode.value !== "benchmark") return;
   const c = benchmarkClaims.find(x => x.claim_id === els.scenario.value);
   if (c) els.claim.value = c.claim;
 });
+els.model.addEventListener("change", () => {
+  preferredModel = els.model.value;
+  clearResult();
+  describeModel();
+  saveSettings();
+});
+els.backend.addEventListener("change", () => { applyMode(); saveSettings(); });
+els.claim.addEventListener("input", clearResult);
 els.check.addEventListener("click", runCheck);
 els.useSel.addEventListener("click", () => useSelection(false));
 $("pasteClip").addEventListener("click", pasteClipboard);
-applyMode();
-useSelection(true); // quietly prefill if text is already selected
+async function initialize() {
+  try {
+    const saved = typeof chrome !== "undefined" && chrome.storage?.local
+      ? (await chrome.storage.local.get("claimCheckSettings")).claimCheckSettings
+      : JSON.parse(localStorage.getItem("claimCheckSettings") || "null");
+    if (saved) {
+      if (HINTS[saved.mode]) els.mode.value = saved.mode;
+      if (typeof saved.backend === "string") els.backend.value = saved.backend;
+      if (typeof saved.model === "string") preferredModel = saved.model;
+    }
+  } catch { /* Start with defaults if preferences cannot be read. */ }
+  applyMode();
+  useSelection(true);
+}
+initialize();
