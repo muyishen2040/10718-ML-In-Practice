@@ -1,6 +1,6 @@
 # Shared experiment progress
 
-Updated November 5, 2026. This is the portable project record for teammates and
+Updated November 10, 2026. This is the portable project record for teammates and
 agents. Run JSONs and configurations are authoritative; rounded tables below
 summarize them. The submitted report and later research are separate snapshots.
 
@@ -182,6 +182,27 @@ by this organizational update. Details and dependencies are in
 [the work plan](TEAM_WORKPLAN.md).
 
 ## Updating this record
+
+### November 10: private CPU backend for extension testing
+
+The interface branch at `99eadf5` includes a benchmark adapter for the saved
+BM25-trained DistilBERT. A new portable CPU notebook mounts shared Drive, stages
+roughly 283 MB of model/settings/rankings, and starts that adapter on runtime
+loopback. An authenticated Colab CLI relay exposes it only on the user's own
+`127.0.0.1:8000`. The [setup guide](../apps/COLAB_BACKEND.md) includes restart and
+stop commands; this is not a public or always-on deployment.
+
+Windows-to-Colab requests returned the 500-claim catalog, completed model results
+with three evidence passages for dev claims `00000` and `00001`, and
+`insufficient_sources` for `00417`. Live mode still reports unavailable. Sample
+verification times were 1.4–2.6 seconds including CLI transport, not a latency
+benchmark. The full project suite passed 125 tests with one optional local
+real-model test skipped; the later focused backend suite passed 20 with one
+skip. Actual saved-model inference was separately exercised in Colab on CPU.
+
+This establishes serving mechanics. No new accuracy result, completed user study
+or installed-Chrome usability result is claimed. Details are in
+[the interface update](team_updates/2026-11-10_colab-cpu-extension.md).
 
 Repository cleanup on November 4 moved 11 older notebooks into
 `notebooks/archive/` and long historical specifications into `docs/archive/`.

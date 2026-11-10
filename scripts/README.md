@@ -51,6 +51,10 @@ make them recommended next experiments:
 
 ## Notebook builders and dependencies
 
+`build_extension_backend_notebook.py` builds the portable CPU serving notebook.
+`colab_extension.ps1` prepares its named session and starts the local authenticated
+relay on Windows/WSL. See [the backend guide](../apps/COLAB_BACKEND.md).
+
 `build_evidence_reader_notebook.py` and `build_answer_followup_notebook.py` build
 the current reader reproduction notebooks. `build_limitation_notebook.py` now
 targets the notebook archive. Existing archived source snapshots are retained

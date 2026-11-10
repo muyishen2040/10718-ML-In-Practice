@@ -53,7 +53,7 @@ and local verifiers on identical supplied evidence before adding live web search
 
 ```text
 AGENTS.md                  Agent entry point and collaboration rules
-apps/                      Interface/backend placement guide; implementations planned
+apps/                      Prototype extension, development backend and Colab setup
 configs/                   Baseline protocol and pending team-evaluation pointer
 docs/                      Shared setup, results, contracts, task briefs and updates
 notebooks/                 Current reader references; historical workflows in archive/

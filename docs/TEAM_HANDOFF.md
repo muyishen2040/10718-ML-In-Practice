@@ -261,6 +261,15 @@ print('Passage fields:', sorted(passages[0]) if passages else [])
 
 ## Colab code and runtime choices
 
+For the extension's saved-model backend, use the
+[CPU serving guide](../apps/COLAB_BACKEND.md) and portable
+[`extension_backend_cpu_colab.ipynb`](../notebooks/extension_backend_cpu_colab.ipynb).
+This workflow is on `feat/colab-extension-backend`, based on the interface branch
+at `99eadf5`. It mounts shared Drive, copies a small serving bundle into the CPU
+runtime, and uses a private authenticated relay on the extension user's computer.
+It serves known benchmark claims; it does not add live retrieval or change the
+evaluation release. See the November 10 update in the progress record for checks.
+
 Choose one source route per fresh session:
 
 - **Repository route:** checkout the verified published commit, work from the

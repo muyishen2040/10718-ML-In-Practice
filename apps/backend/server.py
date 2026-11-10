@@ -1,8 +1,8 @@
 """Development HTTP boundary for the screening assistant (stdlib only).
 
 Routes: GET /health, GET /benchmark/claims, POST /verify.
-See docs/INTEGRATION_CONTRACT.md. Only a fixture-replay adapter exists; model
-adapters from B/C plug in through the `Adapter` interface below.
+See docs/INTEGRATION_CONTRACT.md. Supports fixture replay and the saved baseline
+adapter; other model adapters plug in through the same boundary.
 """
 import argparse
 import json
@@ -120,7 +120,7 @@ def make_handler(adapter):
                 params = parse_qs(urlparse(self.path).query)
                 query = (params.get("q") or [""])[0][:200]
                 try:
-                    limit = max(1, min(100, int((params.get("limit") or ["50"])[0])))
+                    limit = max(1, min(1000, int((params.get("limit") or ["50"])[0])))
                 except ValueError:
                     limit = 50
                 self._send(200, {"claims": adapter.list_claims(query, limit), "provenance": adapter.name})

@@ -1,6 +1,7 @@
 # Proposed interface and model integration contract
 
-This is a shared design, not an implemented endpoint. A owns the extension and
+This is the shared design for the [development backend](../apps/SETUP.md).
+The prototype supports fixture replay and the saved benchmark model. A owns the extension and
 backend boundary, B provides the local-model adapter, C provides the hosted-model
 adapter. Agree on shared contract and evaluation changes before implementation.
 

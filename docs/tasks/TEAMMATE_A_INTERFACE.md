@@ -25,8 +25,9 @@ then create your task branch from it. The handoff includes the verified code
 snapshot and checkout commands.
 
 Put extension code under `apps/browser-extension/` and the HTTP/integration layer
-under `apps/backend/`. Those implementation directories are planned, not working
-apps yet. See [apps/README.md](../../apps/README.md). B and C supply reusable local
+under `apps/backend/`. A prototype with mock responses and a saved-model adapter
+is available; see [setup](../../apps/SETUP.md) and the
+[Colab CPU workflow](../../apps/COLAB_BACKEND.md). B and C supply reusable local
 and hosted verifier adapters. Coordinate contract changes rather than duplicating
 model logic inside the frontend.
 

@@ -1,5 +1,9 @@
 # Run the prototype (development only)
 
+For the shared-Drive CPU session and private local relay, use
+[the Colab backend guide](COLAB_BACKEND.md). It includes a portable notebook,
+Windows/WSL commands and extension setup without a public tunnel.
+
 Status: mock interface, a fixture-replay backend, and an optional adapter that runs
 the saved BM25-top-3 DistilBERT baseline on AVeriTeC dev claims. No retrieval for
 new claims and no hosted API is connected. Contract: [INTEGRATION_CONTRACT.md](../docs/INTEGRATION_CONTRACT.md).
