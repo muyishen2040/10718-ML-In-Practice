@@ -11,6 +11,30 @@ and usage limits still apply. This setup is for supervised testing on your own
 computer, using known AVeriTeC dev claims. It does not add retrieval for arbitrary
 claims, provide an always-on service, or establish a completed user study.
 
+## Get the correct branch and data access
+
+For a new checkout:
+
+```bash
+git clone --branch feat/colab-extension-backend https://github.com/muyishen2040/10718-ML-In-Practice.git
+cd 10718-ML-In-Practice
+git log -1 --oneline
+```
+
+For an existing checkout, inspect `git status` and preserve local changes before
+switching. Fetch `origin`, then switch to `feat/colab-extension-backend` and
+update with `git pull --ff-only`. Do not switch to `main` for this workflow.
+The model-selector implementation is commit `20cebdf`; later documentation
+commits on this branch also apply. Record the revision you actually use.
+
+Open the shared [10718_averitec Drive folder](https://drive.google.com/drive/folders/19tuNxxB1y9arSmLnrQcxRuPvDQBf6YeK)
+using the account you will authorize in Colab. Viewer access is sufficient.
+Add a shortcut to **My Drive** named `10718_averitec`; the directory
+`v2_source_documents` must be inside it. Git does not contain the saved models
+or evidence. Another computer/account must complete its own CLI sign-in and
+Drive authorization; it cannot inherit an already running session through Git.
+Keep credentials and generated relay state out of commits.
+
 ## Windows setup
 
 Ubuntu WSL with Python 3 and `python3-venv` is required. Work from the repository
@@ -101,6 +125,22 @@ Before inviting participants, test one completed response, the empty-evidence
 case and a stopped-backend error. Select a fixed claim set for a controlled study;
 record assisted/unassisted assignments, judgments and timing separately. This
 workflow does not yet collect participant responses or randomize conditions.
+
+For a concrete startup check, `GET http://127.0.0.1:8000/health` should name
+`model_registry`, and `/models` should list the four choices with their actual
+availability. In the extension, search `averitec:dev:00000` for a completed
+response and `averitec:dev:00417` for the missing-evidence state. On `00000`,
+the four saved pipelines returned Refuted in the November 10 serving check.
+Change the model, check that the old result clears, and check again; the result
+badge must name the new selection. Reopen the popup to verify that your choice
+is remembered. To check a connection error, stop the local relay with Ctrl+C
+and retry, then restart Relay. This preserves the loaded Colab backend.
+
+This workflow runs the extension on the computer hosting the relay. Other
+participants' computers cannot use your `127.0.0.1` address to reach it. For an
+in-person study, participants can use that prepared computer in turn; remote
+multi-user hosting requires a separate deployment. Fix one model/evidence
+condition for a controlled comparison and record it with the participant data.
 
 ## Resume and stop
 

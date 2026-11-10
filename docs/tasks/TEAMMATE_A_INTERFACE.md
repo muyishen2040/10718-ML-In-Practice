@@ -19,6 +19,12 @@ You do not need to train the research models or create evaluation splits.
 
 ## Ownership and source setup
 
+To run the existing extension with the private Colab CPU backend, use
+`feat/colab-extension-backend` and follow
+[the complete serving guide](../../apps/COLAB_BACKEND.md). It includes the model
+selector. The general task-branch instructions below apply to new development,
+not to reproducing that unmerged user-test setup.
+
 Suggested branch: `team/teammate-a-interface`, created from the published shared
 base commit listed in the handoff. Fetch `origin/main`,
 then create your task branch from it. The handoff includes the verified code

@@ -6,8 +6,15 @@ The user reviews the sources and makes the final trust or sharing decision.
 
 ## Start here
 
+**To run the extension for user testing:** use
+[`feat/colab-extension-backend`](https://github.com/muyishen2040/10718-ML-In-Practice/tree/feat/colab-extension-backend)
+and follow [the backend and extension setup guide](apps/COLAB_BACKEND.md).
+It includes the four-model selector, shared-Drive inputs and private Colab CPU
+connection. These changes have not been merged into `main`.
+
 Use the shared [`main` branch](https://github.com/muyishen2040/10718-ML-In-Practice/tree/main).
-It includes the reader follow-up, repository cleanup and team handoff.
+It includes the reader follow-up, repository cleanup and team handoff; use it
+for general research work rather than the extension setup above.
 
 1. Read [the shared handoff](docs/TEAM_HANDOFF.md) for Drive access, Colab setup
    and verified artifact locations.

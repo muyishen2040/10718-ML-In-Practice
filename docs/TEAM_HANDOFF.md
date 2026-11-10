@@ -1,6 +1,6 @@
 # Teammate and agent handoff
 
-Updated November 5, 2026. This guide assumes no access to earlier conversations.
+Updated November 10, 2026. This guide assumes no access to earlier conversations.
 The current assignment is A: browser extension/interface; B: local ML method;
 C: hosted API models. Names can replace the A/B/C placeholders.
 The time-based split release is pending. See [EVALUATION.md](EVALUATION.md) and the
@@ -12,6 +12,14 @@ Dependency profiles live in `requirements/`; earlier specifications/runbooks
 live in `docs/archive/`. The duplicate root guides were removed. Private draft
 notes were preserved in the ignored `local/` directory and are
 not teammate onboarding sources.
+
+**Extension user-test setup:** checkout the published
+[`feat/colab-extension-backend` branch](https://github.com/muyishen2040/10718-ML-In-Practice/tree/feat/colab-extension-backend)
+and follow [apps/COLAB_BACKEND.md](../apps/COLAB_BACKEND.md). This is the route
+for starting the existing frontend and real CPU backend with the model selector.
+The general `main`-branch research instructions below do not include these
+unmerged serving changes. Each testing computer needs its own local relay;
+Drive permissions and Google authorization are not transferred through Git.
 
 ## Start here
 
