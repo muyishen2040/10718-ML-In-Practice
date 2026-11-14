@@ -1,0 +1,342 @@
+{
+ "source": "Saved baseline model outputs (DistilBERT trained on BM25 top-3), replayed, not live inference.",
+ "provenance": "baseline_distilbert_bm25_top3",
+ "claims": [
+  {
+   "claim_id": "averitec:dev:00141",
+   "set": "A",
+   "claim": "China seek for court’s approval to kill the over 20,000 coronavirus patients to avoid further spread of the virus.",
+   "verdict": "Refuted",
+   "explanation": "A baseline classifier read the claim and the three passages shown and chose this label. It does not give reasons.",
+   "uncertainty_note": "The model leaned toward this label, but not strongly. This is a simple baseline model. On the benchmark it agreed with the reference label about half the time, so treat it as a rough lead only.",
+   "evidence": [
+    {
+     "passage_id": "output_dev/141.json#7:source_document:p0001",
+     "text": "on Friday for the mass killing of coronavirus patients in China as sure means of controlling the spread of the deadly virus. The State tells the court that China is on the verge of losing its health workers to Coronavirus as at least 20 health workers contract the virus daily. The State argues that coronavirus patients admitted at hospitals only have their deaths delayed and infect many others while receiving care at the hospital. China has been under criticism for human rights violations and organizations have questioned China’s approach in dealing with the Coronavirus outbreak and it is believed the country has already killed many of its coronavirus patients. https://ab-tc.com/china-seek-for-courts-approval-to-kill-the-over-20000-coronavirus-patients-to-avoid-further-spread-of-the-virus/ |Re: China Seeks For Court’s Approval To Kill The Over 20,000 Coronavirus Patients. by taiwoowiat: 6:49am |Re: China Seeks For Court’s Approval To Kill The Over 20,000 Coronavirus Patients. by Inspectorsuga22(m): 6:51am On Feb 07, 2020 U want to get an order to kill people whom u should be fighting",
+     "url": "https://www.nairaland.com/5673491/china-seeks-courts-approval-kill",
+     "rank": 1
+    },
+    {
+     "passage_id": "output_dev/141.json#1:source_document:p0000",
+     "text": "China seek for court's approval to kill the over 20,000 coronavirus patients to avoid further spread of the virus The highest level of court in Chhina, Supreme People's Court, is expected to give an approval on Friday for the mass killing of coronavirus patients in China as sure means of controlling the spread of the deadly virus. The State tells the court that China is on the verge of losing its health workers to Coronavirus as at least 20 health workers contract the virus daily. The State argues that coronavirus patients admitted at hospitals only have their deaths delayed and infect many others while receiving care at the hospital. China has been under criticism for human rights violations and organizations have questioned China's approach in dealing with the Coronavirus outbreak and it is believed the country has already killed many of its coronavirus patients. The State mentioned in a document to the court that the country may lose its entire",
+     "url": "https://www.abujapress.com/2020/02/hard-decision-china-seek-for-courts.html",
+     "rank": 2
+    },
+    {
+     "passage_id": "output_dev/141.json#4:source_document:p0000",
+     "text": "On Feb. 5, 2020, the website AB-TC (aka City News) published an article that claimed Chinese officials were seeking approval from the Supreme People’s Court to start the mass killing of 20,000 people infected with the new coronavirus in an attempt to contain the disease: China seek for court’s approval to kill the over 20,000 coronavirus patients to avoid further spread of the virus The highest level of court in Chhina [sic], Supreme People’s Court, is expected to give an approval on Friday for the mass killing of coronavirus patients in China as sure means of controlling the spread of the deadly virus. The State tells the court that China is on the verge of losing its health workers to Coronavirus as at least 20 health workers contract the virus daily. This is not a genuine news report. While the AB-TC website does not carry any disclaimers labeling its content as fiction, we found a number of red flags concerning",
+     "url": "https://www.snopes.com/fact-check/china-kill-coronavirus-patients/",
+     "rank": 3
+    }
+   ]
+  },
+  {
+   "claim_id": "averitec:dev:00257",
+   "set": "A",
+   "claim": "A Maryland man was sentenced to a year in jail for throwing parties.",
+   "verdict": "Supported",
+   "explanation": "A baseline classifier read the claim and the three passages shown and chose this label. It does not give reasons.",
+   "uncertainty_note": "The model leaned toward this label, but not strongly. This is a simple baseline model. On the benchmark it agreed with the reference label about half the time, so treat it as a rough lead only.",
+   "evidence": [
+    {
+     "passage_id": "output_dev/257.json#8:source_document:p0000",
+     "text": "Shawn Marshall Myers, Maryland Man Who Held Large Outdoor Gatherings Despite COVID-19 Order, Sentenced To Year In Jail HUGHESVILLE, Md. (WJZ) -- A Charles County man who held multiple large gatherings earlier this year in violation of Gov. Larry Hogan's emergency order banning gatherings of 10 or more people due to the coronavirus has been sentenced to a year in jail, the county's state's attorney's office said Friday. Judge W. Louis Hennessy sentenced Shawn Marshall Myers, 42, of Hughesville, to a year in jail on a charge of failing to comply with an emergency order. - Coronavirus Latest: Charles County Man Shawn Marshall Myers Held Without Bail After Hosting Bonfire With 60 People, Violating Emergency Order - Coronavirus Latest: Charles Co. Man Arrested For Hosting 60 People, Violating Gov. Hogan's Emergency Order Police responded to Myers' home on March 22 for a report of a large party with around 50 attendees. When officers told him the gathering violated the emergency",
+     "url": "https://www.cbsnews.com/baltimore/news/maryland-man-who-held-parties-despite-coronavirus-order-sentenced-latest/",
+     "rank": 1
+    },
+    {
+     "passage_id": "output_dev/257.json#2:source_document:p0000",
+     "text": "Man gets 1 year in jail for holding large parties against COVID-19 rules Shawn Myers, 42, held two large parties within one week, prosecutors say. A Maryland man has been sentenced to one year in jail after he hosted two parties against the governor's COVID-19 large gathering orders, prosecutors said. Following a bench trial, Shawn Marshall Myers, 42, was convicted of two counts of failure to comply with an emergency order, according to a Friday statement from the Charles County State’s Attorney's Office. On March 22, officers responded to Myers' home in Hughesville for a report of a large party violating Gov. Larry Hogan's state of emergency and large gathering orders, prosecutors said. Officers found about 50 people at Myers' home and they told Myers that his party violated the current rules, prosecutors said. Myers allegedly argued with the officers, but he \"eventually agreed to disband his party,\" prosecutors said. Days later, on March 27, officers again responded to Myers'",
+     "url": "https://abcnews.go.com/US/man-year-jail-holding-large-parties-covid-19/story?id=73259644",
+     "rank": 2
+    },
+    {
+     "passage_id": "output_dev/257.json#6:source_document:p0000",
+     "text": "Silver Spring Man Sentenced 35 Years For Throwing Two Molotov Cocktails At His Ex-Girlfriend's Apartment GREENBELT, Md. (WJZ) — A 41-year-old man was sentenced to 35 years in federal prison Tuesday for throwing two molotov cocktails at his ex-girlfriend's apartment in 2017. Darius Eric Wilder, 41, of Silver Spring Maryland will serve 35 years in prison followed by five years of supervised release for committing arson and for using, carrying and possessing a destructive device during and in furtherance of a crime of violence, related to the firebombing of his ex-girlfriend's apartment. \"Darius Wilder is a violent criminal who used Molotov cocktails to commit arson in an attempt to seriously injure his ex-girlfriend, her children, and endanger the surrounding community,\" said ATF Special Agent in Charge Rob Cekada. \"We are glad to see that justice has been served and remain committed to working alongside our law enforcement and emergency service partners to stop violent offenders like this.\" According to Wilder's",
+     "url": "https://www.cbsnews.com/baltimore/news/silver-spring-man-sentenced-35-years-for-throwing-two-molotov-cocktails-at-his-ex-girlfriends-apartment/",
+     "rank": 3
+    }
+   ]
+  },
+  {
+   "claim_id": "averitec:dev:00375",
+   "set": "A",
+   "claim": "Nigeria was the third most terrorised in the world in 2020, after Afghanistan and Iraq.",
+   "verdict": "Not Enough Evidence",
+   "explanation": "A baseline classifier read the claim and the three passages shown and chose this label. It does not give reasons.",
+   "uncertainty_note": "The model leaned toward this label, but not strongly. This is a simple baseline model. On the benchmark it agreed with the reference label about half the time, so treat it as a rough lead only.",
+   "evidence": [
+    {
+     "passage_id": "output_dev/375.json#145:source_document:p0002",
+     "text": "the military, killing 23 soldiers in Katsina, the president’s home state. In Niger, Sokoto, Zamfara, Benue, and many other states in the North, lawlessness has seized the streets and farms. In Kaduna, the killings are gradually assuming the shape of premeditated genocide that breeds reprisal attacks and an endless spiral of bloodletting. A new report released last week by the Global Terrorism Index which measured the impact of terrorism across the world ranked Nigeria the third most terrorised country in the world after Afghanistan and Iraq – with huge economic and financial loss. The report noted that violence between herders and farmers has led to about 300,000 people fleeing their homes. Perhaps overwhelmed, the Chief of Army Staff, Lt General Tukur Buratai has more or less thrown the challenge of security on the laps of the people. Yet over the years, the administration has consistently played down the capacity of the extreme Islamic group and others to continue to wrought",
+     "url": "https://www.thisdaylive.com/index.php/2020/07/29/a-government-in-disarray?amp=1",
+     "rank": 1
+    },
+    {
+     "passage_id": "output_dev/375.json#137:source_document:p0242",
+     "text": "2016. “Water during and after Armed Conflicts.” Brill Research Perspectives in International Water Law 1 (4). https://brill. Tignino, M. 2018. “Granting Rivers Legal Rights: Is International Law Ready for Rights-Centered Environmental Protection?” NewSecurityBeat (blog), June 19. https://www.newsecuritybeat. org/2018/06/granting-rivers-legal-rights-international-law-ready- Ending Conflicts over Water: Solutions to Water and Security Challenges Tignino, M. 2020. Personal communication with the authors. Time. 2019. “This Indian City Is Running Out of Water, Impacting 4.6 Million People.” June 20. https://time.com/5611385/india-chennai- Toromade, S. 2018a. “How FG Wants to Put a Permanent End to Crisis with N179bn Plan.” Pulse.Ng, July 1. https://www.pulse.ng/news/ local/herders-farmers-conflict-how-fg-wants-to-put-a-permanent- Toromade, S. 2018b. “Nigeria Is 3rd Most Terrorised Country in the World but Death Rate Drops.” Pulse.Ng, December 6. https://www. pulse.ng/news/local/nigeria-is-3rd-most-terrorised-country-in-the- Transparency International. 2013. “Iraq: Overview of Corruption and Anti-corruption.” https://www.u4.no/publications/iraq-overview-of- Transparency International. 2018. “Corruption Perceptions Index Trivedi, A., and M. Chertock. 2019. “Responding to Day Zero Equitably: Water Crisis Lessons from Cape Town and Chennai.” World Resources Institute Insights (blog), October 31. https://www.wri.org/ blog/2019/10/responding-day-zero-equitably-water-crisis-lessons- Troell,",
+     "url": "https://pacinst.org/wp-content/uploads/2020/09/Ending-Conflicts-Over-Water-Pacific-Institute-Sept-2020.pdf",
+     "rank": 2
+    },
+    {
+     "passage_id": "output_dev/375.json#130:source_document:p0040",
+     "text": "number of people killed from terrorism in India increased by 1.2 per The majority of terrorist incidents are highly centralised. In 2014, 57 per cent of all attacks occurred in five countries; Iraq, Pakistan, Afghanistan, Nigeria and Syria. However the rest of the world sufered a 54 per cent increase in terrorist incidents in 2013. TABLE 1 NUMBER OF YEARS A COUNTRY HAS BEEN RANKED IN THE TEN COUNTRIES MOST AFFECTED Many of the same countries have suffered from terrorism over an extended period. Angola was in the worst ten for two years, whereas India has featured 14 times. Afghanistan and Pakistan have featured 13 times. The ten countries with the highest number of deaths in 2014 accounted for 88 per cent of the global total. However, the majority of these deaths have occurred in just five countries. As in both 2012 and 2013, Iraq, Nigeria, Afghanistan, Pakistan and Syria remain the five countries most affected by terrorism. In 2014",
+     "url": "https://privacyinternational.org/sites/default/files/2018-02/Global%20Terrorism%20Index%202015%2C%20Institute%20for%20Economics%20%26%20Peace.pdf",
+     "rank": 3
+    }
+   ]
+  },
+  {
+   "claim_id": "averitec:dev:00093",
+   "set": "A",
+   "claim": "US Judge Amy Coney Barrett graduated at the top of her law school class at Notre Dame Law School",
+   "verdict": "Refuted",
+   "explanation": "A baseline classifier read the claim and the three passages shown and chose this label. It does not give reasons.",
+   "uncertainty_note": "The model had no strong lean; the labels were close. This is a simple baseline model. On the benchmark it agreed with the reference label about half the time, so treat it as a rough lead only.",
+   "evidence": [
+    {
+     "passage_id": "output_dev/93.json#80:source_document:p0000",
+     "text": "Amy Coney Barrett Students 'proud' of her nomination \"I was very impressed with her intelligence and her ability to grasp the law,\" said Stan Wruble, Barrett's classmate at Notre Dame's law school. \"As you might imagine there are a lot of smart people who go to Notre Dame Law School, but she was clearly one of the smartest people I've ever met.\" Hadyn Pettersen, one of Barrett's law students at Notre Dame said the student body at Notre Dame's law school agrees. \"When registration opens every year, her class fills up within seconds,\" Pettersen said. \"That's because people really do recognize that she is at the top of her field.\" Pettersen said class has been different with Judge Barrett making visits to Washington, D.C. to discuss the Supreme Court vacancy. \"On Monday we heard rumblings that she was in consideration,\" Pettersen said. \"Actually, when we showed up for class, she had sent her clerk to lead the class that day.",
+     "url": "https://www.abc57.com/news/amy-coney-barrett-students-proud-of-her-nomination",
+     "rank": 1
+    },
+    {
+     "passage_id": "output_dev/93.json#123:source_document:p0000",
+     "text": "On behalf of Family Research Council (FRC) and the thousands of families we represent, I strongly urge you to support the nomination of Judge Amy Coney Barrett to serve as an Associate Justice on the U.S. Supreme Court. FRC plans to score any floor votes on her Judge Barrett is highly qualified to serve on the Supreme Court. She graduated at the top of her class at Notre Dame Law School and clerked for Judge Laurence Silberman on the U.S. Court of Appeals for the D.C. Circuit, as well as the late Supreme Court Justice Antonin Scalia. Barrett worked in private practice at highly regarded law firms, followed by a distinguished career as a law professor for nearly 15 years. Most recently, she has served with distinction as a judge on the U.S. Court of Appeals for the Seventh Circuit, where she has exemplified a strong originalist jurisprudence, integrity, and faithfulness to the law over policy preference. When nominated to",
+     "url": "https://www.judiciary.senate.gov/imo/media/doc/FRC%20Support%20Let%20for%20Barrett%20SCOTUS%20Nomination%2010.8.2020.pdf",
+     "rank": 2
+    },
+    {
+     "passage_id": "output_dev/93.json#13:source_document:p0000",
+     "text": "Justice Amy Coney Barrett joined the U.S. Supreme Court on October 27, 2020, replacing Justice Ruth Bader Ginsburg. Barrett (Amy Coney prior to her marriage) was born in Louisiana on January 28, 1972 to a deeply Catholic family. After graduating from a Catholic high school in New Orleans, she attended Rhodes College in Tennessee, majoring in English literature. Barrett graduated magna cum laude from Rhodes in 1994 and then obtained her law degree from Notre Dame Law School, where she was an executive editor of the Notre Dame Law Review. She not only graduated summa cum laude but was the valedictorian of the 1997 class at the law school. Barrett began her legal career with two clerkships in federal courts. After a year as a clerk for the U.S. Court of Appeals for the District of Columbia Circuit, she served as a clerk for U.S. Supreme Court Justice Antonin Scalia in 1998-1999. Barrett then briefly worked at a private law",
+     "url": "https://supreme.justia.com/justices/amy-coney-barrett/",
+     "rank": 3
+    }
+   ]
+  },
+  {
+   "claim_id": "averitec:dev:00112",
+   "set": "A",
+   "claim": "The Median White Household Wealth In The US Is 81 Times that of The Black Median Household Wealth",
+   "verdict": "Supported",
+   "explanation": "A baseline classifier read the claim and the three passages shown and chose this label. It does not give reasons.",
+   "uncertainty_note": "The model leaned toward this label, but not strongly. This is a simple baseline model. On the benchmark it agreed with the reference label about half the time, so treat it as a rough lead only.",
+   "evidence": [
+    {
+     "passage_id": "output_dev/112.json#21:source_document:p0032",
+     "text": "wealth was slowly approaching white wealth levels. By 2003 the ratio of white to black median wealth dropped to 4.1. By 2031 the ratio of white to black median wealth would have been forecast to drop to 4.0, that is, white wealth would be four times that of black wealth. However, as a result of the Great Recession and its disproportionate impact on black wealth, this already severe disparity is projected to increase even further. By 2031 the typical white household’s wealth is projected to be 4.5 times that of the typical black household’s wealth. Figure 10 highlights the increasing disparities in wealth of blacks and whites projected twenty years in the future as a result of the Great Recession. FIGURE 10. THE EFFECTS OF THE GREAT RECESSION ON WEALTH DISPARITIES BETWEEN WHITES AND BLACKS: RATIO OF WHITE TO BLACK HOUSEHOLD WEALTH The preceding discussion documents the extent to which the impacts of the recession on household wealth were unevenly",
+     "url": "https://www.aclu.org/wp-content/uploads/legal-documents/discrimlend_final.pdf",
+     "rank": 1
+    },
+    {
+     "passage_id": "output_dev/112.json#812:source_document:p0021",
+     "text": "black family today owns practically no wealth, just $3,600 in 2018. This figure is just two percent of the $147,000 the median white family owns. The median Latinx family has assets worth $6,600 — just four percent as much as the median white family. Put differently, the median white family has 41 times more wealth than the median black family and 22 times more It’s important to note that we largely focus on median wealth figures rather than mean, or average. The nomenclature and discourse regarding the racial wealth divide is generally in reference to the median (i.e. what is “typical.”) The racial wealth divide at the median compares the typical black household to the typical white household. However, the mean racial wealth divide between blacks and whites is much larger than the median due to the high concentration of wealth in the hands of an extremely small proportion of overwhelmingly white families. Because the median measure represents comparisons between",
+     "url": "https://inequality.org/wp-content/uploads/2019/04/Ten-Solutions-to-Bridge-the-Racial-Wealth-Divide-FINAL-.pdf",
+     "rank": 2
+    },
+    {
+     "passage_id": "output_dev/112.json#13:source_document:p0028",
+     "text": "times the median net worth of Black families, which was only $17,150 in 2016. The median Black net worth is less than one year’s subsistence at the federal poverty level for a family of three.32 White Families Own Nearly Ten Times the Wealth of Black Families Source: JEC Democratic Staff Calculations, Federal Reserve Survey of Consumer Finances, 2016. Among households with wealth, Black median household wealth hovered between 5% and 17% of the level of White household wealth between 1989 and 2016. Black households have never held more than 5% of the nation’s total wealth, while White households held 85% in 2019, despite Blacks making up around 13% of the population.33 A 2016 study found that Americans underestimated the size of the Black-White wealth gap by 80 percentage points.34 If these trends persist, White median household wealth will increase while Black and Hispanic household wealth continues to fall. At the current pace of decline, median household wealth could reach zero",
+     "url": "https://www.jec.senate.gov/public/_cache/files/ccf4dbe2-810a-44f8-b3e7-14f7e5143ba6/economic-state-of-black-america-2020.pdf",
+     "rank": 3
+    }
+   ]
+  },
+  {
+   "claim_id": "averitec:dev:00058",
+   "set": "A",
+   "claim": "Russia sent medical aid to the US, in the form of medical equipment to help coronavirus patients.",
+   "verdict": "Refuted",
+   "explanation": "A baseline classifier read the claim and the three passages shown and chose this label. It does not give reasons.",
+   "uncertainty_note": "The model leaned toward this label, but not strongly. This is a simple baseline model. On the benchmark it agreed with the reference label about half the time, so treat it as a rough lead only.",
+   "evidence": [
+    {
+     "passage_id": "output_dev/58.json#50:source_document:p0000",
+     "text": "Russia sends medical aid to US to help fight COVID-19 Military plane with medical gear heading from Russia to US The Russian Defense Ministry said it sent a plane with medical aid to the U.S. on Wednesday. \"A Russian Air Force plane with medical masks and medical equipment on board departed for the United States,\" the ministry said in a statement. The move came after a phone talk between the leaders of the two countries on Monday, when Vladimir Putin and Donald Trump expressed serious concern over the scale of the spread of the coronavirus across the world. Following the presidential conversation, Kremlin spokesman Dmitry Peskov told reporters that Russia offered to the U.S. help with medical and protective equipment because the epidemiological situation in the U.S. is particularly severe, as the country currently holds the first place with the highest number of coronavirus cases worldwide. Later, Trump thanked Moscow for the help at a daily briefing at the White",
+     "url": "https://www.aa.com.tr/en/health/russia-sends-medical-aid-to-us-to-help-fight-covid-19/1788290",
+     "rank": 1
+    },
+    {
+     "passage_id": "output_dev/58.json#338:source_document:p0001",
+     "text": "airport on the same day. The aircraft was filled with medical equipment and protective gear including medical masks to help Americans in fighting COVID-19. Russia’s initiative resulted from a prior telephone conversation between Putin and Trump. Earlier on March 22 as a gesture of goodwill, Russia sent medical assistance to Italy amid the country's struggle with the pandemic. Russia also sent medical military aid to Serbia to fight coronavirus. In all cases, the reactions of the international community were polarized into two main camps regarding Russia’s humanitarian aid to foreign countries severely hit by the pandemic. The range of opinions stretched from the suspicion of a “Bad Samaritan” to genuine gratitude for the help to people who are badly affected. One of the common criticisms directed at the European Union was that it failed to provide swift help to its members during the current crisis. Polarized opinions are not a surprise. Since the Cold War, anti-Communist and Russophobic narratives have",
+     "url": "https://uscpublicdiplomacy.org/blog/common-good-russia%E2%80%99s-public-diplomacy-during-covid-19-era",
+     "rank": 2
+    },
+    {
+     "passage_id": "output_dev/58.json#18:source_document:p0002",
+     "text": "us a very, very large planeload of things, medical equipment, which was very nice.” Later, the Kremlin announced that Putin had offered Trump the aid during a one-on-one telephone conversation when the two sides discussed measures to fight coronavirus. “Trump gratefully accepted this humanitarian aid,” Putin spokesman Dmitri Peskov told reporters. “Now that this situation has affected everyone without exception and is global, there is no alternative to joint action in the spirit of partnership and mutual help.” Peskov also said that Putin “assumes that when US makers of medical equipment and materials have gained speed, they too will be able to reciprocate if necessary”. Russia has already sent planeloads of masks and other medical aid to Italy, deploying medics in military vehicles labelled: “From Russia with Love.” Russia’s military said the aid included 22 vehicles and mobile disinfection labs. Italian officials publicly thanked Russia for the aid. A widely circulated report in the La Stampa newspaper cited senior officials",
+     "url": "https://www.theguardian.com/world/2020/apr/01/coronavirus-russia-sends-plane-full-of-medical-supplies-to-us",
+     "rank": 3
+    }
+   ]
+  },
+  {
+   "claim_id": "averitec:dev:00467",
+   "set": "B",
+   "claim": "Suresh Raina, the Chennai Super Kings (CSK) cricketer, has withdrawn from the upcoming 2020 edition of the IPL after testing positive for COVID-19.",
+   "verdict": "Refuted",
+   "explanation": "A baseline classifier read the claim and the three passages shown and chose this label. It does not give reasons.",
+   "uncertainty_note": "The model leaned clearly toward this label. This is a simple baseline model. On the benchmark it agreed with the reference label about half the time, so treat it as a rough lead only.",
+   "evidence": [
+    {
+     "passage_id": "output_dev/467.json#2:source_document:p0000",
+     "text": "IPL 2020: CSK’s Suresh Raina pulls out of tournament due to personal reasons IPL 2020 in UAE: The development comes just a day after news broke of several CSK members testing positive for Covid-19, which included a bowler who has represented Team India. Chennai Super Kings cricketer Suresh Raina on Saturday pulled out of IPL 2020, citing personal reasons. Raina has decided to return home from UAE. CSK informed about Raina’s decision through a post on Twitter. “Suresh Raina has returned to India for personal reasons and will be unavailable for the remainder of the IPL season. Chennai Super Kings offers complete support to Suresh and his family during this time,” the quote was attributed to CSK CEO KS Viswanathan on the team’s Twitter handle. ALSO READ: India cricketer among several CSK members to test positive for Covid-19 The development comes just a day after news broke of several CSK members testing positive for Covid-19, which included a bowler who",
+     "url": "https://www.hindustantimes.com/cricket/ipl-2020-csk-s-suresh-raina-pulls-out-of-tournament-due-to-personal-reasons/story-jWnpsydXnnYe25NxKYDbTN.html",
+     "rank": 1
+    },
+    {
+     "passage_id": "output_dev/467.json#11:source_document:p0000",
+     "text": "Suresh Raina pulls out of IPL over ‘personal reasons’ A day after the Indian Premier League, due to start in three weeks, was aflutter over the news of Chennai Super Kings’ members testing positive for COVID-19, Suresh Raina on Saturday (August 29) pulled out of IPL 2020, citing personal reasons. Raina has decided to return home from the UAE. CSK informed about Raina’s decision through Twitter. “Suresh Raina has returned to India for personal reasons and will be unavailable for the remainder of the IPL season. Chennai Super Kings offers complete support to Suresh and his family during this time,” the quote was attributed to CSK CEO KS Viswanathan on the team’s Twitter handle. Raina has been a key member of the CSK squad since the first season of the IPL. He was looking forward to playing in the tournament after announcing his retirement from international cricket, along with Mahendra Singh Dhoni on August 15. Altogether 12 members of the",
+     "url": "https://thefederal.com/sports/suresh-raina-pulls-out-of-ipl-on-personal-reasons/?amp=1",
+     "rank": 2
+    },
+    {
+     "passage_id": "output_dev/467.json#16:source_document:p0000",
+     "text": "Chennai Super Kings all-rounder Suresh Raina has returned to India from the United Arab Emirates (UAE) and will miss the Indian Premier League (IPL 2020), the team announced on Saturday. \"Suresh Raina has returned to India for personal reasons and will be unavailable for the remainder of the IPL season,\" said a statement from CSK's CEO on the IPL franchise's official Twitter handle. \"Chennai Super Kings offers complete support to Suresh Raina and his family during this time,\" the statement added. Raina had announced his retirement from international cricket earlier this month. This development comes a day after news broke of multiple members of the Chennai Super Kings squad testing positive for COVID-19 in Dubai, where the team is based. The team will now undergo an extended quarantine period and will be able to begin its practice sessions only from September 1. The competition begins in the UAE from September 19. - All England Championship: Lakshya, Tanisha-Ashwini progress to pre-quarterfinals",
+     "url": "https://sportstar.thehindu.com/cricket/ipl/ipl-news/suresh-raina-to-miss-ipl-2020-chennai-super-kings-uae-dubai-cricket-news-csk-covid-19-cases/article32471655.ece",
+     "rank": 3
+    }
+   ]
+  },
+  {
+   "claim_id": "averitec:dev:00357",
+   "set": "B",
+   "claim": "Edo State in Nigeria has a 19% unemployment rate.",
+   "verdict": "Supported",
+   "explanation": "A baseline classifier read the claim and the three passages shown and chose this label. It does not give reasons.",
+   "uncertainty_note": "The model leaned toward this label, but not strongly. This is a simple baseline model. On the benchmark it agreed with the reference label about half the time, so treat it as a rough lead only.",
+   "evidence": [
+    {
+     "passage_id": "output_dev/357.json#55:source_document:p0002",
+     "text": "2020 “The unemployment rate among states in the South-south is as follows: Akwa-Ibom 45.2%; Bayelsa 27.8%; Cross River 31.6%; Delta 40.3%, Rivers State 43.7 and Edo 19%,” the report said Akwaibom leads in unemployment as Rivers state trails from behind.. |Re: Edo Unemployment Rate Falls From 25.1% To 19%, Obaseki Claims Achievement by GodlyHeart: 9:09pm On Aug 14, 2020 |Re: Edo Unemployment Rate Falls From 25.1% To 19%, Obaseki Claims Achievement by anonimi: 9:09pm On Aug 14, 2020 |Re: Edo Unemployment Rate Falls From 25.1% To 19%, Obaseki Claims Achievement by dynicks(m): 9:10pm On Aug 14, 2020 Lai Mohammed frantically looking for means and reasons to tag the declared achievement as hate speech...! |Re: Edo Unemployment Rate Falls From 25.1% To 19%, Obaseki Claims Achievement by LosC: 9:10pm On Aug 14, 2020 |Re: Edo Unemployment Rate Falls From 25.1% To 19%, Obaseki Claims Achievement by kyuniii(m): 9:10pm On Aug 14, 2020 |Re: Edo Unemployment Rate Falls From 25.1% To 19%,",
+     "url": "https://www.nairaland.com/6054560/edo-unemployment-rate-falls-25.1",
+     "rank": 1
+    },
+    {
+     "passage_id": "output_dev/357.json#55:source_document:p0001",
+     "text": "Falls From 25.1% To 19%, Obaseki Claims Achievement by talk2anderson23(m): 5:24pm |Re: Edo Unemployment Rate Falls From 25.1% To 19%, Obaseki Claims Achievement by BlowYourMind: 5:27pm On Aug 14, 2020 |Re: Edo Unemployment Rate Falls From 25.1% To 19%, Obaseki Claims Achievement by rentAcock(m): 9:09pm On Aug 14, 2020 Virtual unemployment rate. If you ask me, the real unemployment rate should be around 70%. |Re: Edo Unemployment Rate Falls From 25.1% To 19%, Obaseki Claims Achievement by Nobody: 9:09pm On Aug 14, 2020 |Re: Edo Unemployment Rate Falls From 25.1% To 19%, Obaseki Claims Achievement by Muyiwaipere(m): 9:09pm On Aug 14, 2020 |Re: Edo Unemployment Rate Falls From 25.1% To 19%, Obaseki Claims Achievement by Nobody: 9:09pm On Aug 14, 2020 “The unemployment rate among states in the South-south is as follows: Akwa-Ibom 45.2%; Bayelsa 27.8%; Cross River 31.6%; Delta 40.3%, Rivers State 43.7 and Edo 19%,” the report said Akwaibom leads in unemployment as Rivers state trails from behind..",
+     "url": "https://www.nairaland.com/6054560/edo-unemployment-rate-falls-25.1",
+     "rank": 2
+    },
+    {
+     "passage_id": "output_dev/357.json#1:source_document:p0000",
+     "text": "The unemployment rate in Edo State has dropped from 25.1 per cent in the 3rd quarter of 2018 to 19 per cent in the second quarter of 2020, new data released from Nigeria Bureau of Statistics (NBS) have shown. The 6.1 per cent drop is attributed to the job creation drive of the Governor Godwin Obaseki-led administration, whose job creation agency, Edo State Skills Development Agency, (EdoJobs) is credited to have created over 170,000 jobs through innovative programmes in the last three and half years. According to the NBS report, Edo State has the lowest unemployment figure in the South South region, bettering five other oil-rich states in the region. “The unemployment rate among states in the South-south is as follows: Akwa-Ibom 45.2%; Bayelsa 27.8%; Cross River 31.6%; Delta 40.3%, Rivers State 43.7 and Edo 19%,” the report said. The NBS reported that of the 1,985,765 labour force in Edo State, “916,871 people are fully employed and work for over",
+     "url": "https://thenationonlineng.net/edo-unemployment-rate-reduces-to-19/amp/",
+     "rank": 3
+    }
+   ]
+  },
+  {
+   "claim_id": "averitec:dev:00047",
+   "set": "B",
+   "claim": "Joe Biden said he wants to ban fracking in the US.",
+   "verdict": "Conflicting Evidence",
+   "explanation": "A baseline classifier read the claim and the three passages shown and chose this label. It does not give reasons.",
+   "uncertainty_note": "The model had no strong lean; the labels were close. This is a simple baseline model. On the benchmark it agreed with the reference label about half the time, so treat it as a rough lead only.",
+   "evidence": [
+    {
+     "passage_id": "output_dev/47.json#5:source_document:p0008",
+     "text": "going to stop destroying this planet — no ifs, buts and maybes about it. Later, Sanders said that he thinks Biden wants to continue fracking. A Biden spokesman told Lisa Friedman, a New York Times reporter, that the remark was restating his plan on “banning new oil and gas permitting on public lands and waters,” according to a tweet she posted the day of the debate. The claim that Joe Biden wants to eliminate fracking is false because it ignores his publicly stated opposition to such a ban. But it is true that Biden has said he wants to stop new permits for fracking. Further, while some posts contain job loss potential supported by a study, linking that outcome to Biden’s unclear comments in an early debate is misleading. We rate the post as PARTLY FALSE because the content in the item was not supported by our research. - JoeBiden.com, \"Joe’s Plan for a Clean Energy Revolution and Environmental Justice\"",
+     "url": "https://www.usatoday.com/story/news/factcheck/2020/06/19/fact-check-joe-biden-doesnt-want-ban-all-fracking-only-new-permits/3215253001/",
+     "rank": 1
+    },
+    {
+     "passage_id": "output_dev/47.json#10:source_document:p0003",
+     "text": "retracted his remarks the night of the debate, but that hasn’t stopped conservative media outlets from inaccurately reporting that Biden supports a total ban on fracking. Biden said he’s “not banning fracking” if he wins in November. Ban means “prohibit,” and Biden doesn’t want to prohibit fracking. He would allow existing fracking to continue. Biden does, however, want to stop issuing new permits for fracking on public lands, and he left that part out of his speech in Pittsburgh. Biden’s statement is accurate but needs clarification. We rate it Mostly True. The Philadelphia Inquirer, “A fight over fracking at a Pennsylvania steel mill is forcing a reckoning among Democrats,” March 17, 2020 The Hill, “GOP mischaracterizes Biden’s energy agenda in convention speeches,” Aug. 30, 2020 Biden for President, “Climate: Joe’s Plan for a Clean Energy Revolution and Environmental Justice” accessed July 20, 2020 The Houston Chronicle, “Did Joe Biden just pledge to ban fracking in debate against Bernie Sanders?” March",
+     "url": "https://www.inquirer.com/politics/joe-biden-pa-fracking-fact-check-20200901.html",
+     "rank": 2
+    },
+    {
+     "passage_id": "output_dev/47.json#5:source_document:p0006",
+     "text": "fracking because the answer we need — we need other industries to transition to get to, ultimately, a complete zero emissions by 2025,\" Biden said. Biden's running mate, Sen. Kamala Harris told reporters during a campaign stop in Atlanta on Friday that Biden wouldn’t ban fracking but would seek to eliminate subsidies for fossil fuels. “Let's be really clear about this. Joe Biden is not going to ban fracking. He is going to deal with the oil subsidies. But that's, you know, the president likes to put everything out of context. But let's be clear: What Joe was talking about was banning subsidies, but he will not ban fracking,” Harris said of Trump's debate rhetoric. During an interview in April, Biden told KDKA television in Pittsburgh that he would not shut down the fracking industry. He said that he would not allow new leases on federal land, adding that 90% of the leases are on private land. He reiterated the",
+     "url": "https://www.usatoday.com/story/news/factcheck/2020/06/19/fact-check-joe-biden-doesnt-want-ban-all-fracking-only-new-permits/3215253001/",
+     "rank": 3
+    }
+   ]
+  },
+  {
+   "claim_id": "averitec:dev:00499",
+   "set": "B",
+   "claim": "The first night of the US Republican National Convention had 128.4 million viewers",
+   "verdict": "Supported",
+   "explanation": "A baseline classifier read the claim and the three passages shown and chose this label. It does not give reasons.",
+   "uncertainty_note": "The model leaned toward this label, but not strongly. This is a simple baseline model. On the benchmark it agreed with the reference label about half the time, so treat it as a rough lead only.",
+   "evidence": [
+    {
+     "passage_id": "output_dev/499.json#0:source_document:p0061",
+     "text": "5, President Trump stated that the convention, in fact, would be open to the press.[236] Night one of the Republican convention had 17.0 million viewers across all cable and television networks tracked by Nielsen. The first night of the Democratic convention had 19.7 million viewers across the same networks.[237] As per the table below, across six major, traditional television (NBC, CBS, ABC) and cable networks (FNC, CNN, MSNBC) tracked by Nielsen, night one of the Republican convention had 15.9 million viewers, compared to 18.8 million viewers for night one of the Democratic convention.[238] According to C-SPAN, night one of the Republican convention had 440,000 viewers on C-SPAN, compared to 76,000 viewers for night one of the Democratic convention.[239] Compared to 2016, the only cable or television network that saw a rise in viewership for Night 1 was Fox News Channel.[240] Night two of the Republican convention had 19.4 million viewers across all television networks tracked by Nielsen. The second night",
+     "url": "https://en.wikipedia.org/wiki/2020_Republican_National_Convention#Broadcast_and_media_coverage",
+     "rank": 1
+    },
+    {
+     "passage_id": "output_dev/499.json#0:source_document:p0062",
+     "text": "2016, the only cable or television network that saw a rise in viewership for Night 1 was Fox News Channel.[240] Night two of the Republican convention had 19.4 million viewers across all television networks tracked by Nielsen. The second night of the Democratic convention had 19.2 million viewers across the same networks.[242] As per the table below, night two of the Republican convention had 18 million viewers across six major, traditional television and cable networks tracked by Nielsen. The second night of the Democratic convention had 18.5 million viewers across the same six networks.[243] These numbers do not include viewers on streaming services.[243] Compared to 2016, the only networks that saw a rise in viewership for Night 2 were Fox News Channel and MSNBC. Night three of the Republican convention had 17.3 million viewers across all television networks tracked by Nielsen. The third night of the Democratic convention had 22.8 million viewers across the same networks.[244] Compared to Night 2,",
+     "url": "https://en.wikipedia.org/wiki/2020_Republican_National_Convention#Broadcast_and_media_coverage",
+     "rank": 2
+    },
+    {
+     "passage_id": "output_dev/499.json#0:source_document:p0063",
+     "text": "News Channel and MSNBC. Night three of the Republican convention had 17.3 million viewers across all television networks tracked by Nielsen. The third night of the Democratic convention had 22.8 million viewers across the same networks.[244] Compared to Night 2, the only network that saw a rise in viewership for Night 3 was CBS. Compared to 2016, every network had a decline in viewership for Night 3. (Note: Many along the south coast of the United States were preparing for Hurricane Laura, and this likely contributed towards the drop in viewership.) Night four of the Republican convention had 23.8 million viewers across all television networks tracked by Nielsen. The fourth night of the Democratic convention had 24.6 million viewers across the same networks.[245] Compared to Night 3, all six networks saw a rise in viewership for Night 4. Compared to 2016, every network had a decline in viewership for Night 4.[citation needed] An August 30 ABC poll found no increase",
+     "url": "https://en.wikipedia.org/wiki/2020_Republican_National_Convention#Broadcast_and_media_coverage",
+     "rank": 3
+    }
+   ]
+  },
+  {
+   "claim_id": "averitec:dev:00246",
+   "set": "B",
+   "claim": "A “new virus” disease called Novel Bunya V!rus that is caused by ticks is diagnosed as severe fever with thrombocytopenia syndrome (SFTS) is spreading in China.",
+   "verdict": "Conflicting Evidence",
+   "explanation": "A baseline classifier read the claim and the three passages shown and chose this label. It does not give reasons.",
+   "uncertainty_note": "The model leaned toward this label, but not strongly. This is a simple baseline model. On the benchmark it agreed with the reference label about half the time, so treat it as a rough lead only.",
+   "evidence": [
+    {
+     "passage_id": "output_dev/246.json#186:source_document:p0000",
+     "text": "Severe Fever with Thrombocytopenia Syndrome Virus, Shandong Province, China Severe fever with thrombocytopenia syndrome, which results in severe illness and has a high case-fatality rate, is caused by a novel bunyavirus, severe fever with thrombocytopenia syndrome virus. We found that samples from 2/237 (0.8%) healthy persons and 111/134 (83%) goats in Yiyuan County, Shandong Province, China, were seropositive for this virus. Severe fever with thrombocytopenia syndrome (SFTS) is a serious infectious disease with 12% case-fatality rate that has been documented in 6 provinces rural in northeast and central China. SFTS is caused by a novel bunyavirus, SFTS virus (SFTSV) (1). The major clinical signs and symptoms of SFTS are fever, thrombocytopenia, leukopenia, and elevated serum hepatic enzyme levels. SFTSV is classified in the family Bunyaviridae, genus Phlebovirus, and is believed to be transmitted by ticks because the virus has been detected in Haemaphysalis longicornis ticks (1). However, the disease can also be transmitted from person to person through contact with",
+     "url": "https://wwwnc.cdc.gov/eid/article/18/6/11-1345_article",
+     "rank": 1
+    },
+    {
+     "passage_id": "output_dev/246.json#67:source_document:p0000",
+     "text": "Transmission of Severe Fever with Thrombocytopenia Syndrome Virus by Haemaphysalis longicornis Ticks, China We demonstrate maintenance and transmission of severe fever with thrombocytopenia syndrome virus by Haemaphysalis longicornis ticks in the larva, nymph, and adult stages with dissemination in salivary gland, midgut, and ovarian tissues. The H. longicornis tick is a competent vector to transmit this virus in both transovarial and transstadial modes. Severe fever with thrombocytopenia syndrome (SFTS) is an emerging infectious disease caused by SFTS virus (SFTSV), identified in China in 2009 (1) and subsequently in South Korea (2) and Japan (3). Symptoms of SFTS usually include fever, thrombocytopenia, and leukocytopenia; case-fatality rates are 10%–30% (1,4). SFTS is implicated as largely a tick-associated disease, supported by evidence that many patients had exposure to ticks before disease onset (1). The longhorned tick, Haemaphysalis longicornis, the most abundant human-biting tick species in most SFTS-endemic areas of China (5), was found to harbor SFTSV (1,6,7). These studies suggested that H. longicornis",
+     "url": "https://wwwnc.cdc.gov/eid/article/24/5/15-1435_article",
+     "rank": 2
+    },
+    {
+     "passage_id": "output_dev/246.json#188:source_document:p0000",
+     "text": "Severe fever with thrombocytopenia syndrome (SFTS) treated with a novel antiviral medication, favipiravir (T-705) - GUID: 6B4B30B0-4973-480F-8A33-443B7647C324GUID: 1142ADD3-F746-4A9D-BEA7-ACAFD6D32783 Severe fever and thrombocytopenia syndrome (SFTS) is an acute illness with a high mortality (16.2–29.1%). Unfortunately, there is no specific cure or vaccine for SFTS. In this open-label study, two patients with SFTS were treated with favipiravir, a new antiviral drug. Patients had a sustainable virologic, immunologic and symptomatic recovery. Favipiravir may be a prosiming drug for the treatment of SFTS. The online version of this article (10.1007/s15010-019-01364-9) contains supplementary material, which is available to authorized users. Severe fever and thrombocytopenia syndrome (SFTS) is caused by a novel bunyavirus: severe fever and thrombocytopenia syndrome virus (SFTSV). Cases of infection have been reported in central and northeastern China, South Korea, and southern Japan. The most recent updates on the cumulative reported cases are 7419 in China by 2016, 335 in South Korea by 2016, and 319 in Japan by 2017 [1, 2]. SFTSV-like",
+     "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7223615/",
+     "rank": 3
+    }
+   ]
+  },
+  {
+   "claim_id": "averitec:dev:00135",
+   "set": "B",
+   "claim": "No one lost their health care because of the Wellmark and Iowa Farm Bureau Health Plan Bill.",
+   "verdict": "Supported",
+   "explanation": "A baseline classifier read the claim and the three passages shown and chose this label. It does not give reasons.",
+   "uncertainty_note": "The model leaned toward this label, but not strongly. This is a simple baseline model. On the benchmark it agreed with the reference label about half the time, so treat it as a rough lead only.",
+   "evidence": [
+    {
+     "passage_id": "output_dev/135.json#6:source_document:p0006",
+     "text": "remain in the individual health insurance market in the six states where it’s selling this year, including Iowa. The Iowa situation became even more complicated this spring, when Iowa legislators approved a controversial plan to let Wellmark partner with the Iowa Farm Bureau Federation to sell 2019 policies that don’t comply with Affordable Care Act regulations or state rules. Among other things, the new Farm Bureau plans could exclude people with pre-existing health problems, such as diabetes or cancer. Critics predicted that would let the new Wellmark and Farm Bureau partnership “cherry pick” healthy customers, leaving other carriers to cover unhealthy ones. The new Farm Bureau/Wellmark plans won’t be eligible for Obamacare subsidies. Thams said they’re most likely to appeal to healthy Iowans who make too much money to qualify for the federal assistance. For a single person, the annual income limit to qualify for the subsidies is about $48,000. Medica objected to the bill allowing Wellmark and Farm Bureau",
+     "url": "https://www.desmoinesregister.com/story/news/health/2018/06/15/medica-iowa-health-insurance-wellmark-affordable-care-act-marketplace-obamacare-health-care/705549002/",
+     "rank": 1
+    },
+    {
+     "passage_id": "output_dev/135.json#5:source_document:p0008",
+     "text": "by implementing the practices outlined in the I’ve been so thankful to be in a major where there are people willing to support youth who are trying to get their degree and go on to do bigger and better things to feed the world, having people like Farm Bureau support me is an incredible feeling.” But we are also equally grateful to the thousands of and community volunteers. Those volunteer hours and ﬁ nancial support are integral to the success of the program, which beneﬁ ts young people across the state.” Wellmark Blue Cross and Blue Shield of Iowa and Wellmark Health Plan of Iowa, Inc., are independent licensees of the Blue Cross and Blue Shield Association. Wellmark Blue Cross and Blue Shield of Iowa and Wellmark Health Plan of Iowa, Inc., are independent licensees of the Blue Cross and Blue Shield Association. When that group of Iowa farmers created the Iowa Farm Bureau Federation in 1918: The first gas",
+     "url": "https://www.iowafarmbureau.com/WebsitePageFile/File/F0EFA6AD-6457-4F15-B236-22D9949E78DD/Cenntenial_Web.pdf",
+     "rank": 2
+    },
+    {
+     "passage_id": "output_dev/135.json#23:source_document:p0058",
+     "text": "sponsor coverage that is deemed not insurance are fairly specific. In Iowa and Tennessee, each state's farm bureau is the only entity offering such coverage; in Kansas, a supplemental note to the legislation identifies only the Kansas Farm Bureau as a sponsor of the coverage. Supplemental Note on Senate Bill NO. 32, prepared by Kansas State Legislature, 2019, at http://www.kslegislature.org/li/b2019_20/measures/documents/supp_note_sb32_01_0000.pdf. a. The health benefits coverage must be administered by a third-party administrator (TPA) that has been acting as such for the Iowa Farm Bureau for more than 10 consecutive years prior to the farm bureau offering its health benefits coverage. The fiscal note accompanying the law establishing the coverage assumed that the TPA would be Wellmark Blue Cross Blue Shield, and Wellmark Blue Cross Blue Shield has been administering the coverage for Iowa Farm Bureau. Fiscal Note for Senate File 2349, prepared by Legislative Services Agency, March 28, 2018, https://www.legis.iowa.gov/docs/publications/FN/961243.pdf. As explained above, the arrangements sponsored by farm bureaus in",
+     "url": "https://www.everycrsreport.com/reports/R46003.html",
+     "rank": 3
+    }
+   ]
+  }
+ ]
+}

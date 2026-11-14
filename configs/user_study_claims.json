@@ -1,0 +1,18 @@
+{
+  "purpose": "Claims for the pilot user study (12 claims, two sets of 6 counterbalanced across assisted/unassisted conditions).",
+  "how_chosen": "scripts/select_study_claims.py candidates (seed 718; 3 eligible claims per gold-label x model-output cell), then curated by hand toward 6 claims the baseline classified correctly and 6 it classified wrongly, which roughly matches its 0.52 dev accuracy. Gold labels were used only to choose and later score claims. Selection used the baseline's saved dev outputs and is not a random sample of dev.",
+  "claims": [
+    {"claim_id": "averitec:dev:00141", "set": "A"},
+    {"claim_id": "averitec:dev:00257", "set": "A"},
+    {"claim_id": "averitec:dev:00375", "set": "A"},
+    {"claim_id": "averitec:dev:00093", "set": "A"},
+    {"claim_id": "averitec:dev:00112", "set": "A"},
+    {"claim_id": "averitec:dev:00058", "set": "A"},
+    {"claim_id": "averitec:dev:00467", "set": "B"},
+    {"claim_id": "averitec:dev:00357", "set": "B"},
+    {"claim_id": "averitec:dev:00047", "set": "B"},
+    {"claim_id": "averitec:dev:00499", "set": "B"},
+    {"claim_id": "averitec:dev:00246", "set": "B"},
+    {"claim_id": "averitec:dev:00135", "set": "B"}
+  ]
+}
