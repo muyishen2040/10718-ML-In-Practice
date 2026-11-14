@@ -95,15 +95,32 @@ function toolPanel(item, logOpens) {
 function screenConsent() {
   const params = new URLSearchParams(location.search);
   const g = parseInt(params.get("g"), 10);
-  state.group = [1, 2, 3, 4].includes(g) ? g : 1 + Math.floor(Math.random() * 4);
-  state.groupSource = [1, 2, 3, 4].includes(g) ? "link" : "random";
+  const fromLink = [1, 2, 3, 4].includes(g);
+  state.group = fromLink ? g : 1 + Math.floor(Math.random() * 4);
+  state.groupSource = fromLink ? "link" : "random";
   state.pid = (params.get("p") || "P" + Math.random().toString(36).slice(2, 8)).slice(0, 40);
-  render(el("h1", null, "Claim Check study"),
+  const nodes = [el("h1", null, "Claim Check study"),
     el("p", null, "You will judge short factual claims that appeared online. For some claims you will also see the output of a prototype checking tool. It takes about 20 minutes."),
     el("div", "card", "Draft consent text: confirm wording and approval requirements with the course staff before recruiting. "
       + "Taking part is voluntary and you may stop at any time. We record your answers, confidence ratings and timings. "
-      + "We do not ask for your name, email or other identifying details. Results are used only for a course project and reported in aggregate."),
-    (() => { const a = el("div", "actions"); a.append(button("I agree, start", "primary", screenBackground)); return a; })());
+      + "We do not ask for your name, email or other identifying details. Results are used only for a course project and reported in aggregate.")];
+  let code = null;
+  if (!fromLink) { // opened without a personal link: ask for the code the study team sent, like P01-2 (participant P01, group 2)
+    const fs = el("fieldset"); fs.append(el("legend", null, "Your study code (from the study team)"));
+    code = document.createElement("input"); code.type = "text"; code.placeholder = "for example P01-2"; code.autocomplete = "off"; fs.append(code);
+    nodes.push(fs);
+  }
+  const a = el("div", "actions");
+  a.append(button("I agree, start", "primary", () => {
+    if (code && code.value.trim()) {
+      const m = code.value.trim().match(/^([A-Za-z0-9_]{1,20})-([1-4])$/);
+      if (!m) { code.setCustomValidity("Use the form P01-2"); code.reportValidity(); return; }
+      state.pid = m[1]; state.group = Number(m[2]); state.groupSource = "code";
+    }
+    screenBackground();
+  }));
+  nodes.push(a);
+  render(...nodes);
 }
 
 function screenBackground() {
