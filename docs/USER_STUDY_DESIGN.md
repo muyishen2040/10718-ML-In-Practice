@@ -112,7 +112,7 @@ The page POSTs each finished session to a Google Apps Script web app that writes
 Sheet gets a `trials` tab (one row per judgement), a `participants` tab (group, survey, comment) and a
 `raw` tab (full JSON per person, which `scripts/analyze_study_results.py --raw-csv` reads). The page also
 always offers a file download as a fallback. No names, emails, IP addresses or browser strings are stored.
-The shared token in `study.js` only keeps casual junk out; it is visible in the page source and is not a secret.
+The shared token (kept in the git-ignored `study_config.js`) is still sent to every participant, so it only keeps casual junk out; it is visible in the page source and is not a secret.
 
 ## Before recruiting
 

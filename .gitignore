@@ -32,3 +32,6 @@ BASELINE_CHECKPOINT_REPORT_DRAFT.md
 .idea/
 Thumbs.db
 .DS_Store
+
+# Local study page settings (Apps Script URL and token)
+apps/study/study_config.js

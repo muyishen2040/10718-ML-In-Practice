@@ -9,7 +9,7 @@ Design and rationale: [USER_STUDY_DESIGN.md](USER_STUDY_DESIGN.md). Pilot data i
    (for example `P01-1`, `P02-2`, `P03-3`; the number after the dash is the group, 1-4).
    Use different groups for the pilot people, so that both block orders and both claim sets get tried.
 2. Give them the page, either way:
-   - Zip and send: `zip -r claimcheck_study.zip apps/study -x "apps/study/apps_script/*" "apps/study/__pycache__/*"`. They unzip it, open
+   - Zip and send: `zip -r local/claimcheck_study.zip apps/study -x "apps/study/apps_script/*" "apps/study/__pycache__/*" "apps/study/study_config.example.js"`. The zip includes your `study_config.js`, so their answers reach your Sheet. Send it only to the people you recruit. They unzip it, open
      `index.html` in Chrome or Safari, and type their code on the first screen.
    - Or sit next to them and use your own laptop with the link
      `index.html?g=1&p=P01` (open from disk, or `cd apps/study && python3 -m http.server 8766`).
@@ -36,7 +36,8 @@ downloaded file (see "After they finish").
 3. **Deploy > New deployment > Web app.** Execute as: **Me**. Who has access: **Anyone**. Deploy, authorize when
    asked, and copy the web app URL (ends in `/exec`).
 4. Open that URL in a browser. You should see `{"ok":true,"participants":0,"trials":0}`.
-5. In `apps/study/study.js` set `SUBMIT_URL` to the URL and `TOKEN` to the same string as `STUDY_TOKEN`.
+5. Copy `apps/study/study_config.example.js` to `apps/study/study_config.js` (git-ignored, so the URL and token are
+   never committed) and fill in `SUBMIT_URL` with the URL and `TOKEN` with the same string as `STUDY_TOKEN`.
 6. Test with your own full run (code `P00-1`). The last screen should say the answers were saved, and the Sheet
    should show 12 rows in `trials`, one in `participants`, one in `raw`. Delete the test rows afterwards, or
    ignore participant `P00`.

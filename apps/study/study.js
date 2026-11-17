@@ -3,14 +3,12 @@
    Flow: consent -> background -> instructions -> practice -> two blocks of 6 -> short survey -> save.
    Which block gets the tool, and which claim set, comes from ?g=1..4 (counterbalancing groups). */
 
-const CONFIG = {
-  // Web-app URL of the Google Apps Script receiver (docs/USER_STUDY_PILOT.md). Empty = results are only
-  // offered as a file download at the end. TOKEN must equal the receiver's STUDY_TOKEN; it is visible in
-  // the page source, so it only keeps casual junk out. It is not a secret.
+const CONFIG = Object.assign({
+  // Settings come from study_config.js (git-ignored; see study_config.example.js). The token is visible in the
+  // page source, so it only keeps casual junk out. It is not a secret.
   SUBMIT_URL: "",
   TOKEN: "",
-  STUDY_VERSION: "pilot-0.1",
-};
+}, window.STUDY_CONFIG || {}, { STUDY_VERSION: "pilot-0.1" });
 
 const ANSWERS = [
   ["Supported", "Supported", "The claim is true or backed up."],
