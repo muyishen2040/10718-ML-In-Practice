@@ -1,6 +1,6 @@
 # Team work plan
 
-Updated November 5, 2026. Work covers the interface, local ML improvements and
+Updated November 17, 2026. Work covers the interface, local ML improvements and
 hosted API experiments, using shared evaluation and integration rules.
 These are work assignments,
 not claims that the implementations or new experiments are complete.
@@ -30,15 +30,17 @@ interfaces instead of creating incompatible private copies.
 
 ## Shared evaluation release
 
-The planned release splits official train by time, stores the manifest in
+The evaluation release splits official train by time, stores the manifest in
 shared Drive and exposes its path, hash and fold IDs through
 [configs/team_evaluation.json](../configs/team_evaluation.json). The current
-status is **pending**. [EVALUATION.md](EVALUATION.md) defines the release and
-the instructions B/C use when it becomes ready.
+status is **ready** on `feat/part1-temporal-evaluation`.
+[EVALUATION.md](EVALUATION.md) gives the manifest hash, scoring command and
+instructions for integrating model runners.
 
-Initially plan two earlier-to-later training-validation windows. Date boundaries,
-missing dates, duplicate groups and rare-class coverage must be checked before
-publication. Keep original official dev and test separate.
+The two released windows have separate chronological fit, validation and future
+evaluation partitions. Missing dates and suspect pre-2000 dates are quarantined;
+duplicate claim text is purged across partition boundaries. Keep original
+official dev and test separate.
 Existing full-train checkpoints are not independent baselines on an internal
 validation subset they already trained on.
 
@@ -79,5 +81,6 @@ changes in small PRs to avoid conflicting edits. New run outputs use
 personal owner-specific directories; shared completed artifacts remain inputs.
 
 The cleanup, reader follow-up and handoff are published on `main`.
-The split release remains pending; no extension deployment or new paid
-API experiment is established by this publication.
+The split release and revision runners are published on
+`feat/part1-temporal-evaluation`. Existing experimental notebooks still need
+explicit manifest integration; the pointer alone does not change their splits.

@@ -131,6 +131,11 @@ Use `team/teammate-b-method` and `team/teammate-c-api` for the other tasks.
 Submit a small PR with the experiment setup, result links and limitations.
 Avoid concurrent work on the same branch or output directory.
 
+For new temporal comparisons, create the task branch from
+`origin/feat/part1-temporal-evaluation` instead of `origin/main`, after fetching
+and preserving local changes. This feature branch contains the released
+manifest pointer and scorer; they have not been merged into `main`.
+
 ## Add shared data to your own Colab
 
 1. Open the shared `10718_averitec` folder using your own Google account. Request

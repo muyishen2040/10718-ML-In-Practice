@@ -17,8 +17,9 @@ keeping the user able to inspect the sources.
 The time-based training split release is tracked in
 [team_evaluation.json](../../configs/team_evaluation.json).
 Do not create a different split for the team's new comparison. Existing notebooks
-do not automatically consume this pointer. Inspect/reproduce prior mechanics
-while it is pending; use the ready manifest before new fitting or model selection.
+do not automatically consume this pointer. The release is ready on
+`feat/part1-temporal-evaluation`; use its manifest before new fitting or model
+selection. Its primary metric is Supported-versus-other balanced accuracy.
 
 ## Current evidence and starting point
 
@@ -50,7 +51,7 @@ Start with these files rather than choosing a model from the full script list:
 - [Evidence preparation](../../src/retrieval/evidence_pipeline.py) and
   [validated claim/evidence joins](../../src/data/evidence.py).
 - [Latest reference notebook](../../notebooks/evidence_reader_followup_colab.ipynb):
-  historical configurations and stage order; its old holdout is not the pending
+  historical configurations and stage order; its old holdout differs from the
   temporal release. Inspect it before intentionally reproducing a run.
 
 After the shared Drive shortcut is mounted, use

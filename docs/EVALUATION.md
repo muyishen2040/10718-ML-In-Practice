@@ -41,7 +41,7 @@ Rolling windows share historical training data. Report each window separately.
    any excluded claims. Keep a duplicate group from crossing fit/validation.
 2. Save an immutable manifest in a new versioned Drive directory. A suggested
    location is `processed/averitec/team_splits/PROTOCOL_ID/split_manifest.json`
-   relative to `DATA_ROOT`; this directory is proposed and not yet populated.
+   relative to `DATA_ROOT`. Use a new directory for each subsequent release.
 3. Include a protocol ID, hash of the normalized source claims, per-fold fit and
    validation claim IDs, date boundaries, class counts and exclusion policies.
    Validate no duplicate/unknown IDs, no overlap and the claimed time order.
@@ -113,9 +113,19 @@ revision. Do not assume bundled historical notebooks contain this new file.
   divides by non-Supported claims and conditional FA divides by Supported
   claims. Retain historical all-claim rates with their original labels.
   Report missing predictions and API errors explicitly.
-- The display budget is three passages. URL-proxy retrieval uses the original
-  386 judged dev claims; MRR@3 and MRR over top 20 must remain separately named.
-  Gold-answer controls and web-assisted runs are separate evidence settings.
+- The display budget is three passages. URL-proxy Hit@3 on the original 386
+  judged dev claims is a secondary retrieval diagnostic, not the verdict-model
+  selection metric. Historical MRR values remain in archived artifacts; their
+  ranking scopes must be named if reused. Gold-answer controls and web-assisted
+  runs are separate evidence settings.
+
+The task outcome is a participant making a correct trust decision about a claim.
+The binary model metric measures the corresponding model decisions, giving
+Supported and other claims equal weight. It aligns most directly with a task
+evaluation that also weights those two groups equally. Natural-prevalence task
+accuracy has different weights. Better offline decisions can fail to help users
+if they ignore useful evidence, overtrust wrong verdicts or encounter different
+claims. A randomized field evaluation must measure the human outcome directly.
 
 Every update records the protocol ID, manifest hash, fold ID, input rankings,
 code/model/prompt version and exact artifact links. Review teammate updates

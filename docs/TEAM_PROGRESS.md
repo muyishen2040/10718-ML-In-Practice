@@ -1,6 +1,6 @@
 # Shared experiment progress
 
-Updated November 10, 2026. This is the portable project record for teammates and
+Updated November 17, 2026. This is the portable project record for teammates and
 agents. Run JSONs and configurations are authoritative; rounded tables below
 summarize them. The submitted report and later research are separate snapshots.
 
@@ -229,10 +229,36 @@ The feature branch through `a7a7b8371306c173fa99c6c550b45c2ac49f56d6`
 was then merged into `main`. The handoff now uses `main` for teammate checkout
 and as the base for new task branches.
 
-Chronological splits and the common evaluation entry point remain pending.
-`configs/team_evaluation.json` records the release state. Use the published
-path/hash rather than defining separate splits. Task briefs are in `docs/tasks/`; the
-shared protocol is described in [EVALUATION.md](EVALUATION.md).
+### November 17: released temporal splits and revised decision metric
+
+Protocol `trust_temporal_20261117_v1` is ready on
+`feat/part1-temporal-evaluation`, with its manifest path/hash and scorer in
+`configs/team_evaluation.json`. Existing notebooks need explicit integration.
+The primary model metric is now Supported-versus-other binary balanced accuracy;
+four-class macro-F1 and URL-proxy Hit@3 are secondary diagnostics.
+
+The [completed revision study](team_updates/2026-11-17_part1-temporal-completed.md)
+rescored all 11 historical dev rows and trained logistic regression and
+DistilBERT across two chronological windows. Validation-selected thresholds
+improved balanced accuracy from 0.5841 to 0.6229 and 0.6212 to 0.6245 for logistic
+regression; DistilBERT rose from 0.5827 to 0.6874 and 0.6465 to 0.6628. Each
+comparison holds the selected checkpoint fixed. Spring uses 575 evaluation
+claims; summer uses 611. Settings and thresholds were selected on earlier
+validation claims before future prediction, with no refit.
+
+Every selected threshold reduced false alarms but increased false reassurance.
+In summer, logistic regression's false reassurance rose from 62 to 271 out of
+439 non-Supported claims despite its small balanced-accuracy gain. These are
+decision tradeoffs, not demonstrated safety improvements. Under retrospective
+rescoring of the original 500 dev claims, Qwen+BM25 scores 0.7356, versus 0.5996
+for logistic regression+BM25 and 0.5824 for DistilBERT+BM25. The original table
+above retains its historical four-class metrics.
+
+The manifest quarantines 105 missing dates and nine pre-2000 dates and removes
+earlier duplicate claim text at partition boundaries. All four model/window
+runs passed independent coverage and score checks. Artifacts and exact
+reproduction details are in the linked study. Official test remains untouched.
+The experiment T4 was terminated after results were saved and downloaded.
 
 Each owner writes a new file under `docs/team_updates/`, using the template.
 Include negative results, interrupted runs and unresolved questions. After

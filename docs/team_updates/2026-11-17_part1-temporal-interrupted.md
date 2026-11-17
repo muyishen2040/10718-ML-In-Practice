@@ -1,5 +1,10 @@
 # Part 1 revision experiments: interrupted run
 
+This run resumed later the same day and completed. See the
+[completed experiment record](2026-11-17_part1-temporal-completed.md) for all
+results and final artifact locations. The interruption record below is retained
+to explain the earlier shutdown and recovery.
+
 Stopped on November 17, 2026 at the user's request to avoid leaving a paid
 Colab runtime running near the Codex usage limit. The CLI confirmed that
 `misinfo-part1-revision` was terminated. No replacement runtime was started.
