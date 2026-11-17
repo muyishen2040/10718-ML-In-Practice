@@ -45,12 +45,12 @@ Use saved rankings when possible; the development passage corpus alone is about
 22.85 GB. Save each new run to a separate personal output directory. See the
 handoff before running dataset preparation or full dense retrieval.
 
-Chronological splits inside official train are planned.
+Chronological splits inside official train are released on
+`feat/part1-temporal-evaluation` as `trust_temporal_20261117_v1`.
 [configs/team_evaluation.json](configs/team_evaluation.json) is the single
-release pointer for their path, hash and fold IDs. Its current status is
-**pending**; it does not invent a completed split. Existing notebooks do not
-automatically consume this new pointer. Follow [the evaluation guide](docs/EVALUATION.md)
-once a ready release is published.
+release pointer for their path, hash and fold IDs. Its status is **ready** on
+that branch. Existing notebooks require explicit adaptation. Follow
+[the evaluation guide](docs/EVALUATION.md) and use the coverage-checked scorer.
 
 All primary historical verdict results use the same 500 official dev claims.
 Dev has been inspected repeatedly; official test stays untouched. Compare hosted

@@ -1,11 +1,12 @@
 # Teammate and agent handoff
 
-Updated November 10, 2026. This guide assumes no access to earlier conversations.
+Updated November 17, 2026. This guide assumes no access to earlier conversations.
 The current assignment is A: browser extension/interface; B: local ML method;
 C: hosted API models. Names can replace the A/B/C placeholders.
-The time-based split release is pending. See [EVALUATION.md](EVALUATION.md) and the
-[release pointer](../configs/team_evaluation.json); do not infer that those
-splits or a new evaluation command already exist.
+The time-based split `trust_temporal_20261117_v1` is released on
+`feat/part1-temporal-evaluation`. See [EVALUATION.md](EVALUATION.md) and the
+[release pointer](../configs/team_evaluation.json) for the manifest hash, windows
+and scorer. Historical notebooks need explicit integration with this release.
 
 Root cleanup: current onboarding starts from `README.md` and `AGENTS.md`.
 Dependency profiles live in `requirements/`; earlier specifications/runbooks

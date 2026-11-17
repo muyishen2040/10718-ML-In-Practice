@@ -9,13 +9,15 @@ their helpers. Experimental CLI entry points are not necessarily unused code.
 
 | Entry point | Purpose | Current guidance |
 | --- | --- | --- |
+| [run_part1_revision.py](run_part1_revision.py) | Historical trust-metric recalculation and two temporal classifier comparisons | Released November 17; uses the shared manifest and freezes thresholds before evaluation |
+| [score_trust_predictions.py](score_trust_predictions.py) | Coverage-checked binary and four-class scoring | Accepts official dev or an explicit released temporal partition |
 | [run_evidence_reader.py](run_evidence_reader.py) | Prepare cached evidence, train/read, and compare the NLI pair reader | Main local-method starting point; published split-manifest support still needs wiring |
 | [run_answer_followup.py](run_answer_followup.py) | Reuse/generate questions and extract QA contexts | Reproduction/reference for completed weighting/QA study; QA is not the new default |
 | [train_transformer_verifier.py](train_transformer_verifier.py) | DistilBERT and other transformer baselines | Keep as a comparator and shared input helper |
 | [train_tfidf_logreg.py](train_tfidf_logreg.py) | Cheap supervised baseline and evidence joins | Useful CPU comparator |
 | [run_llm_baseline.py](run_llm_baseline.py) | Hosted OpenAI baseline skeleton | C must address resume/cache binding and incomplete-claim handling before a full run |
 | [run_local_llm_baseline.py](run_local_llm_baseline.py) | Local Qwen baseline | Earlier report comparator; reuse saved results when possible |
-| [evaluate_end_to_end.py](evaluate_end_to_end.py), [generate_baseline_report.py](generate_baseline_report.py) | Earlier scoring/report entry points | Do not confuse these with the planned shared evaluator that has not been released |
+| [evaluate_end_to_end.py](evaluate_end_to_end.py), [generate_baseline_report.py](generate_baseline_report.py) | Earlier scoring/report entry points | Use the released scorer above for the new temporal comparison |
 
 ## Saved-data preparation and retrieval
 
