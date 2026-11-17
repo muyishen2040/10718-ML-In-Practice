@@ -1,6 +1,10 @@
 """Check and flatten user-study result files (the JSON each participant downloads).
 
     python3 scripts/analyze_study_results.py RESULTS_DIR [--csv OUT.csv]
+    python3 scripts/analyze_study_results.py --raw-csv raw_sheet.csv [--csv OUT.csv]
+
+The second form reads the "raw" tab of the Google Sheet receiver, downloaded as CSV (File >
+Download > CSV); its "json" column holds one participant's full result.
 
 For every file it validates the structure (12 trials, 6 assisted and 6 unassisted, groups
 match the counterbalancing in docs/USER_STUDY_DESIGN.md, answers and confidence present),
@@ -114,16 +118,30 @@ def summarize(rows):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("results_dir")
+    parser.add_argument("results_dir", nargs="?", help="folder of per-participant JSON files")
+    parser.add_argument("--raw-csv", default=None, help="CSV export of the Sheet's raw tab")
     parser.add_argument("--gold", default=str(ROOT / "local/baseline/final_dev_predictions.jsonl"))
     parser.add_argument("--csv", default=None)
     args = parser.parse_args()
     gold = load_gold(args.gold)
-    rows, bad = [], 0
-    for path in sorted(Path(args.results_dir).glob("*.json")):
-        result = json.loads(path.read_text(encoding="utf-8"))
+    if bool(args.results_dir) == bool(args.raw_csv):
+        parser.error("give either RESULTS_DIR or --raw-csv")
+    sources = []
+    if args.raw_csv:
+        with open(args.raw_csv, newline="", encoding="utf-8") as handle:
+            for i, row in enumerate(csv.DictReader(handle), start=2):
+                sources.append((f"{Path(args.raw_csv).name} row {i}", json.loads(row["json"])))
+    else:
+        for path in sorted(Path(args.results_dir).glob("*.json")):
+            sources.append((path.name, json.loads(path.read_text(encoding="utf-8"))))
+    rows, bad, seen = [], 0, set()
+    for name, result in sources:
         problems = check(result)
-        print(f"{'OK ' if not problems else 'BAD'} {path.name}" + ("" if not problems else ": " + "; ".join(problems)))
+        key = (result.get("participant_id"), result.get("finished_at"))
+        if key in seen:
+            problems.append("duplicate submission")
+        seen.add(key)
+        print(f"{'OK ' if not problems else 'BAD'} {name}" + ("" if not problems else ": " + "; ".join(problems)))
         if problems:
             bad += 1
         else:

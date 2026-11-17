@@ -107,20 +107,12 @@ The build checks that the adapter reproduces the logged dev prediction for every
 
 ### Collecting responses
 
-The page can POST its JSON result to a URL set as `SUBMIT_URL` in `apps/study/study.js`, and always
-offers a download as a fallback. Simplest receiver: a Google Apps Script web app bound to a Sheet
-(deploy as "Anyone", then paste its URL). Minimal handler:
-
-```javascript
-function doPost(e) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-  sheet.appendRow([new Date(), e.postData.contents]);   // one JSON string per participant
-  return ContentService.createTextOutput("ok");
-}
-```
-
-Do not collect names, emails or IP addresses. Test the receiver before recruiting. For the pilot,
-having people download and send the JSON file is enough.
+The page POSTs each finished session to a Google Apps Script web app that writes to a Google Sheet
+(`apps/study/apps_script/Code.gs`; deployment steps in [USER_STUDY_PILOT.md](USER_STUDY_PILOT.md)). The
+Sheet gets a `trials` tab (one row per judgement), a `participants` tab (group, survey, comment) and a
+`raw` tab (full JSON per person, which `scripts/analyze_study_results.py --raw-csv` reads). The page also
+always offers a file download as a fallback. No names, emails, IP addresses or browser strings are stored.
+The shared token in `study.js` only keeps casual junk out; it is visible in the page source and is not a secret.
 
 ## Before recruiting
 

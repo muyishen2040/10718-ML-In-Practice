@@ -85,5 +85,37 @@ class StudyResultsTest(unittest.TestCase):
             self.assertEqual(len((tmp / "out.csv").read_text().strip().splitlines()), 1 + 48)
 
 
+    def test_reads_sheet_raw_export_and_flags_duplicates(self):
+        import csv
+        import subprocess
+        import sys
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            people = [fake_participant("P01", 1), fake_participant("P02", 4)]
+            for p in people:
+                p["finished_at"] = "t-" + p["participant_id"]
+            with open(tmp / "raw.csv", "w", newline="", encoding="utf-8") as handle:
+                writer = csv.writer(handle)
+                writer.writerow(["server_time", "participant_id", "finished_at", "json"])
+                for p in people + [people[0]]:  # P01 twice, as if a submission were repeated
+                    writer.writerow(["now", p["participant_id"], p["finished_at"], json.dumps(p)])
+            gold = tmp / "gold.jsonl"
+            gold.write_text("\n".join(json.dumps({"claim_id": c["claim_id"], "true_label": "Refuted", "predicted_label": "Refuted"})
+                                      for c in SELECTION), encoding="utf-8")
+            out = subprocess.run([sys.executable, str(ROOT / "scripts" / "analyze_study_results.py"), "--raw-csv", str(tmp / "raw.csv"),
+                                  "--gold", str(gold), "--csv", str(tmp / "out.csv")], capture_output=True, text=True)
+            self.assertEqual(out.returncode, 1, out.stdout)          # the repeated row is reported
+            self.assertIn("duplicate submission", out.stdout)
+            self.assertEqual(len((tmp / "out.csv").read_text().strip().splitlines()), 1 + 24)
+
+    def test_apps_script_receiver(self):
+        import shutil
+        import subprocess
+        if shutil.which("node") is None:
+            self.skipTest("node not installed")
+        out = subprocess.run(["node", str(ROOT / "tests" / "apps_script_receiver_check.js")], capture_output=True, text=True)
+        self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

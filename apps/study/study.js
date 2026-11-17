@@ -4,9 +4,11 @@
    Which block gets the tool, and which claim set, comes from ?g=1..4 (counterbalancing groups). */
 
 const CONFIG = {
-  // Set to a web-app URL (see docs/USER_STUDY_DESIGN.md, "Collecting responses") to POST results there.
-  // Empty = results are only offered as a file download at the end.
+  // Web-app URL of the Google Apps Script receiver (docs/USER_STUDY_PILOT.md). Empty = results are only
+  // offered as a file download at the end. TOKEN must equal the receiver's STUDY_TOKEN; it is visible in
+  // the page source, so it only keeps casual junk out. It is not a secret.
   SUBMIT_URL: "",
+  TOKEN: "",
   STUDY_VERSION: "pilot-0.1",
 };
 
@@ -230,8 +232,20 @@ function resultPayload() {
     trials: state.trials.map(t => ({ number: t.number, block: t.block, claim_id: t.item.claim_id, set: t.item.set, condition: t.assisted ? "assisted" : "unassisted",
       model_verdict_shown: t.assisted ? t.item.verdict : null, answer: t.answer, confidence: t.confidence, time_ms: t.time_ms,
       sources_opened: t.sources_opened || [] })),
-    user_agent: navigator.userAgent,
   };
+}
+
+/* POST to the receiver. Try a normal request so the reply can be read; if the browser blocks reading it,
+   send once more without reading (the receiver ignores a repeat of the same submission). */
+async function submit(payload) {
+  const body = JSON.stringify({ ...payload, token: CONFIG.TOKEN });
+  const opts = { method: "POST", headers: { "Content-Type": "text/plain" }, body };
+  try {
+    const reply = await (await fetch(CONFIG.SUBMIT_URL, opts)).json();
+    return reply.ok ? "confirmed" : "rejected";
+  } catch {
+    try { await fetch(CONFIG.SUBMIT_URL, { ...opts, mode: "no-cors" }); return "unconfirmed"; } catch { return "failed"; }
+  }
 }
 
 async function finish() {
@@ -240,8 +254,12 @@ async function finish() {
   const status = el("p", "muted", CONFIG.SUBMIT_URL ? "Sending your answers…" : "Your answers were not sent anywhere. Please download the file below and send it to the study team.");
   render(el("h1", null, "Thank you"), el("p", null, "That is the end of the study."), status);
   if (CONFIG.SUBMIT_URL) {
-    try { await fetch(CONFIG.SUBMIT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: json }); status.textContent = "Your answers were sent."; }
-    catch { status.textContent = "Sending failed. Please download the file below and send it to the study team."; status.className = "err"; }
+    const result = await submit(payload);
+    const text = { confirmed: "Your answers were saved. You can also download a copy below.",
+      unconfirmed: "Your answers were sent, but we could not confirm they arrived. Please also download the file below and send it to the study team.",
+      rejected: "The server did not accept your answers. Please download the file below and send it to the study team.",
+      failed: "Sending failed. Please download the file below and send it to the study team." }[result];
+    status.textContent = text; status.className = result === "confirmed" ? "muted" : "err";
   }
   const a = el("div", "actions");
   a.append(button("Download my answers", "secondary", () => {
