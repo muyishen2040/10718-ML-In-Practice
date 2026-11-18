@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from src.utils.io import write_json, write_jsonl
@@ -20,7 +21,9 @@ def bind_run(path: Path, config: dict) -> None:
     write_json(config, path)
 
 
-def read_journal(path: Path, expected_ids: set[str]) -> dict[str, dict]:
+def read_journal(
+    path: Path, expected_ids: set[str] | None = None, *, key: str = "claim_id"
+) -> dict[str, dict]:
     if not path.exists():
         return {}
     found = {}
@@ -43,22 +46,24 @@ def read_journal(path: Path, expected_ids: set[str]) -> dict[str, dict]:
                 handle.truncate(start)
             repaired = True
             break
-        cid = str(row.get("claim_id") or "")
-        if cid not in expected_ids or cid in found:
-            raise ValueError(f"Unexpected or duplicate journal claim ID: {cid!r}")
-        found[cid] = row
+        row_id = str(row.get(key) or "")
+        if not row_id or row_id in found or (expected_ids is not None and row_id not in expected_ids):
+            raise ValueError(f"Unexpected or duplicate journal {key}: {row_id!r}")
+        found[row_id] = row
     if not repaired and data and not data.endswith(b"\n"):
         with path.open("ab") as handle:
             handle.write(b"\n")
     return found
 
 
-def append_journal(path: Path, rows: list[dict]) -> None:
+def append_journal(path: Path, rows: list[dict], *, sync: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8", newline="\n") as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
         handle.flush()
+        if sync:
+            os.fsync(handle.fileno())
 
 
 def latest_complete_trainer_checkpoint(directory: Path) -> str | None:

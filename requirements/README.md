@@ -8,6 +8,7 @@ constraints were preserved when these files moved from the root on November 4,
 | Profile | Purpose | Command |
 | --- | --- | --- |
 | [base.txt](base.txt) | Core data/metrics, BM25, TF-IDF and lightweight tests | `python -m pip install -r requirements/base.txt` |
+| [hosted.txt](hosted.txt) | Hosted verifier, benchmark runner and synthetic pilot; Python 3.11+ | `python -m pip install -r requirements/hosted.txt` |
 | [reader-colab.txt](reader-colab.txt) | NLI reader and text-only transformer work; retains Colab's CUDA PyTorch | `python -m pip install -r requirements/reader-colab.txt` |
 | [colab.txt](colab.txt) | Earlier broad dense-retrieval/hosted-baseline environment | `python -m pip install -r requirements/colab.txt` |
 | [local-llm-colab.txt](local-llm-colab.txt) | Earlier quantized local Qwen workflow | `python -m pip install -r requirements/local-llm-colab.txt` |
