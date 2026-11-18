@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field
 
 from src.data.averitec import CANONICAL_LABELS
 
+if TYPE_CHECKING:
+    from openai import OpenAI
+
 LLMVariant = Literal["classify_top3", "rerank_top20_and_classify"]
+NO_EVIDENCE_EXPLANATION = "No evidence passages were supplied to assess the claim."
 
 
 class LLMVerdict(BaseModel):
@@ -103,29 +107,58 @@ def validate_llm_verdict(result: LLMVerdict, passages: list[dict[str, Any]], var
 
 
 def call_openai_structured(
-    *, model: str, system_prompt: str, user_prompt: str, temperature: float
+    *,
+    model: str,
+    system_prompt: str,
+    user_prompt: str,
+    temperature: float | None,
+    client: OpenAI | None = None,
+    max_completion_tokens: int | None = None,
+    timeout: float | None = None,
+    reasoning_effort: str | None = None,
+    service_tier: str | None = None,
 ) -> tuple[LLMVerdict, dict[str, Any]]:
     """Call OpenAI's supported Python structured-output interface.
 
     The OpenAI package is imported only at call time, letting tests run without a
     key and preventing accidental API calls during import.
     """
-    try:
-        from openai import OpenAI
-    except ImportError as error:
-        raise RuntimeError("Install requirements/colab.txt before using the LLM baseline.") from error
-    completion = OpenAI().chat.completions.parse(
+    if client is None:
+        try:
+            from openai import OpenAI
+        except ImportError as error:
+            raise RuntimeError("Install openai>=2,<3 before using the hosted LLM.") from error
+        client = OpenAI()
+
+    options: dict[str, Any] = {}
+    if temperature is not None:
+        options["temperature"] = temperature
+    if max_completion_tokens is not None:
+        options["max_completion_tokens"] = max_completion_tokens
+    if timeout is not None:
+        options["timeout"] = timeout
+    if reasoning_effort is not None:
+        options["reasoning_effort"] = reasoning_effort
+    if service_tier is not None:
+        options["service_tier"] = service_tier
+    completion = client.chat.completions.parse(
         model=model,
         messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
         response_format=LLMVerdict,
-        temperature=temperature,
+        **options,
     )
+    if not completion.choices:
+        raise RuntimeError("Model returned no choices")
     message = completion.choices[0].message
     if message.refusal:
         raise RuntimeError(f"Model refusal: {message.refusal}")
     if message.parsed is None:
         raise RuntimeError("Model returned no parsed structured response")
-    return message.parsed, completion.model_dump(mode="json")
+    # The parsed result is returned separately. It is SDK metadata, not part
+    # of the provider's response, and can trigger generic serialization warnings.
+    raw = completion.model_dump(mode="json", exclude={"choices": {"__all__": {"message": {"parsed"}}}})
+    raw["request_id"] = getattr(completion, "_request_id", None)
+    return message.parsed, raw
 
 
 def build_prediction(claim_id: str, true_label: str | None, result: LLMVerdict | ClaimOnlyLLMVerdict) -> dict[str, Any]:
