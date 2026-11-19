@@ -4,9 +4,9 @@
 - Written date / run date: 2026-11-17. Only offline unit tests were run; no Drive data was run.
 - Completion: **planned**. The code for brief steps 1–5 and the backend adapter is implemented
   and tested on synthetic fixtures. No experiment on AVeriTeC data has run yet.
-- Git branch and commit: written in a local copy that has no `.git` directory. Before teammates
-  check it out, commit it to `team/teammate-b-method` from `origin/main` and confirm that the
-  branch exists on the remote. Record that commit here.
+- Git branch and commit: `team/teammate-b-method` (on the remote), branched from `origin/main`
+  `0a3a858`. Tooling commit `c98f281`; mechanics-check label-order fix `0ceac8e`. The first data
+  run is recorded in [2026-11-18_teammate-b_mechanics-raw-sample-d01.md](2026-11-18_teammate-b_mechanics-raw-sample-d01.md).
 - Hypothesis and single change: none tested yet. This update adds the tools for the brief's
   bounded sequence: the mechanics check, released-fold fitting, the decisive-evidence pilot,
   the selector and frozen-verifier input intervention.
