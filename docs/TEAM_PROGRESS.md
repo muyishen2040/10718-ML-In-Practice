@@ -1,6 +1,6 @@
 # Shared experiment progress
 
-Updated November 5, 2026. This is the portable project record for teammates and
+Updated November 17, 2026. This is the portable project record for teammates and
 agents. Run JSONs and configurations are authoritative; rounded tables below
 summarize them. The submitted report and later research are separate snapshots.
 
@@ -183,6 +183,36 @@ by this organizational update. Details and dependencies are in
 
 ## Updating this record
 
+### November 10: private CPU backend for extension testing
+
+The interface branch at `99eadf5` includes a benchmark adapter for the saved
+BM25-trained DistilBERT. A new portable CPU notebook mounts shared Drive, stages
+roughly 283 MB of model/settings/rankings, and starts that adapter on runtime
+loopback. An authenticated Colab CLI relay exposes it only on the user's own
+`127.0.0.1:8000`. The [setup guide](../apps/COLAB_BACKEND.md) includes restart and
+stop commands; this is not a public or always-on deployment.
+
+Windows-to-Colab requests returned the 500-claim catalog, completed model results
+with three evidence passages for dev claims `00000` and `00001`, and
+`insufficient_sources` for `00417`. Live mode still reports unavailable. Sample
+verification times were 1.4–2.6 seconds including CLI transport, not a latency
+benchmark. The full project suite passed 125 tests with one optional local
+real-model test skipped; the later focused backend suite passed 20 with one
+skip. Actual saved-model inference was separately exercised in Colab on CPU.
+
+This establishes serving mechanics. No new accuracy result, completed user study
+or installed-Chrome usability result is claimed. Details are in
+[the interface update](team_updates/2026-11-10_colab-cpu-extension.md).
+
+The subsequent [model-selector update](team_updates/2026-11-10_model-selector.md)
+adds four CPU-serving choices: DistilBERT with BM25, BGE or fused evidence, and
+the corrected NLI reader (`raw_sample_d01`). The DistilBERT choices share weights
+and keep separate evidence/prediction caches. Real Colab requests exercised all
+four; browser checks covered selection, persistence and delayed-response
+handling. The original BM25 option remains the default. This is a serving change
+with no new training or accuracy claim; restart the kernel and run the updated
+portable notebook before reconnecting the relay.
+
 Repository cleanup on November 4 moved 11 older notebooks into
 `notebooks/archive/` and long historical specifications into `docs/archive/`.
 Current catalogs link to the new locations. A second cleanup removed the root
@@ -199,10 +229,36 @@ The feature branch through `a7a7b8371306c173fa99c6c550b45c2ac49f56d6`
 was then merged into `main`. The handoff now uses `main` for teammate checkout
 and as the base for new task branches.
 
-Chronological splits and the common evaluation entry point remain pending.
-`configs/team_evaluation.json` records the release state. Use the published
-path/hash rather than defining separate splits. Task briefs are in `docs/tasks/`; the
-shared protocol is described in [EVALUATION.md](EVALUATION.md).
+### November 17: released temporal splits and revised decision metric
+
+Protocol `trust_temporal_20261117_v1` is ready on
+`feat/part1-temporal-evaluation`, with its manifest path/hash and scorer in
+`configs/team_evaluation.json`. Existing notebooks need explicit integration.
+The primary model metric is now Supported-versus-other binary balanced accuracy;
+four-class macro-F1 and URL-proxy Hit@3 are secondary diagnostics.
+
+The [completed revision study](team_updates/2026-11-17_part1-temporal-completed.md)
+rescored all 11 historical dev rows and trained logistic regression and
+DistilBERT across two chronological windows. Validation-selected thresholds
+improved balanced accuracy from 0.5841 to 0.6229 and 0.6212 to 0.6245 for logistic
+regression; DistilBERT rose from 0.5827 to 0.6874 and 0.6465 to 0.6628. Each
+comparison holds the selected checkpoint fixed. Spring uses 575 evaluation
+claims; summer uses 611. Settings and thresholds were selected on earlier
+validation claims before future prediction, with no refit.
+
+Every selected threshold reduced false alarms but increased false reassurance.
+In summer, logistic regression's false reassurance rose from 62 to 271 out of
+439 non-Supported claims despite its small balanced-accuracy gain. These are
+decision tradeoffs, not demonstrated safety improvements. Under retrospective
+rescoring of the original 500 dev claims, Qwen+BM25 scores 0.7356, versus 0.5996
+for logistic regression+BM25 and 0.5824 for DistilBERT+BM25. The original table
+above retains its historical four-class metrics.
+
+The manifest quarantines 105 missing dates and nine pre-2000 dates and removes
+earlier duplicate claim text at partition boundaries. All four model/window
+runs passed independent coverage and score checks. Artifacts and exact
+reproduction details are in the linked study. Official test remains untouched.
+The experiment T4 was terminated after results were saved and downloaded.
 
 Each owner writes a new file under `docs/team_updates/`, using the template.
 Include negative results, interrupted runs and unresolved questions. After

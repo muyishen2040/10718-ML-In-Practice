@@ -50,10 +50,9 @@ def main():
             p.add_argument("--loss-normalization", choices=("sample_mean", "batch_weight_mean"), default="sample_mean")
             p.add_argument("--unfreeze-embeddings", action="store_true", help="Also train vocabulary embeddings; increases optimizer memory and checkpoint size")
             p.add_argument("--device", default="cuda")
-            p.add_argument("--release-config", type=Path, help="configs/team_evaluation.json; trains on a released fit fold instead of an internal holdout")
-            p.add_argument("--fold-id", help="Released fold to fit and score; required with --release-config")
-            p.add_argument("--fold-epoch-policy", choices=("fixed", "best"), default="fixed",
-                           help="fixed: report the last epoch (no validation selection); best: select epoch on fold validation")
+            p.add_argument("--release-config", type=Path, help="configs/team_evaluation.json; fit a released fold, choose the "
+                           "learning rate and Supported threshold on its validation IDs, then score its evaluation IDs once (no refit, no dev)")
+            p.add_argument("--fold-id", help="Released fold, e.g. spring_2020; required with --release-config")
     infer = sub.add_parser("infer", help="Frozen saved reader on any claims + three-passage rankings (input intervention)")
     infer.add_argument("--model", type=Path, required=True, help="Saved final_model directory")
     infer.add_argument("--claims", type=Path, required=True)

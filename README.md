@@ -6,8 +6,15 @@ The user reviews the sources and makes the final trust or sharing decision.
 
 ## Start here
 
+**To run the extension for user testing:** use
+[`feat/colab-extension-backend`](https://github.com/muyishen2040/10718-ML-In-Practice/tree/feat/colab-extension-backend)
+and follow [the backend and extension setup guide](apps/COLAB_BACKEND.md).
+It includes the four-model selector, shared-Drive inputs and private Colab CPU
+connection. These changes have not been merged into `main`.
+
 Use the shared [`main` branch](https://github.com/muyishen2040/10718-ML-In-Practice/tree/main).
-It includes the reader follow-up, repository cleanup and team handoff.
+It includes the reader follow-up, repository cleanup and team handoff; use it
+for general research work rather than the extension setup above.
 
 1. Read [the shared handoff](docs/TEAM_HANDOFF.md) for Drive access, Colab setup
    and verified artifact locations.
@@ -38,12 +45,12 @@ Use saved rankings when possible; the development passage corpus alone is about
 22.85 GB. Save each new run to a separate personal output directory. See the
 handoff before running dataset preparation or full dense retrieval.
 
-Chronological splits inside official train are planned.
+Chronological splits inside official train are released on
+`feat/part1-temporal-evaluation` as `trust_temporal_20261117_v1`.
 [configs/team_evaluation.json](configs/team_evaluation.json) is the single
-release pointer for their path, hash and fold IDs. Its current status is
-**pending**; it does not invent a completed split. Existing notebooks do not
-automatically consume this new pointer. Follow [the evaluation guide](docs/EVALUATION.md)
-once a ready release is published.
+release pointer for their path, hash and fold IDs. Its status is **ready** on
+that branch. Existing notebooks require explicit adaptation. Follow
+[the evaluation guide](docs/EVALUATION.md) and use the coverage-checked scorer.
 
 All primary historical verdict results use the same 500 official dev claims.
 Dev has been inspected repeatedly; official test stays untouched. Compare hosted
@@ -53,7 +60,7 @@ and local verifiers on identical supplied evidence before adding live web search
 
 ```text
 AGENTS.md                  Agent entry point and collaboration rules
-apps/                      Interface/backend placement guide; implementations planned
+apps/                      Prototype extension, development backend and Colab setup
 configs/                   Baseline protocol and pending team-evaluation pointer
 docs/                      Shared setup, results, contracts, task briefs and updates
 notebooks/                 Current reader references; historical workflows in archive/

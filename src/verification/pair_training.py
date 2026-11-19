@@ -12,6 +12,8 @@ from src.data.evidence import attach_evidence
 from src.evaluation.classification import evaluate_predictions
 from src.evaluation.splits import selection_split
 from src.evaluation.team_release import fold_rows, load_release_fold
+from src.evaluation.trust_decisions import apply_policy, decision_metrics, threshold_study
+from src.evaluation.trust_decisions import selection_key as trust_selection_key
 from src.utils.checkpoints import atomic_jsonl, bind_run, latest_complete_trainer_checkpoint
 from src.utils.io import read_jsonl, write_json
 from src.utils.runs import sha256_file
@@ -44,11 +46,11 @@ def train_reader(args):
     if getattr(args, "release_config", None):
         fold = load_release_fold(args.release_config, args.data_root, args.fold_id, records["train"],
                                  train_claims_path=paths["train"], forbidden_ids={r["claim_id"] for r in records["dev"]})
-        fit_rows, val_rows = fold_rows(records["train"], fold)
+        partitions = fold_rows(records["train"], fold)
+        fit_rows, val_rows, eval_rows = partitions["fit"], partitions["validation"], partitions["evaluation"]
     else:
         a, b = selection_split(records["train"], .1, args.validation_seed, args.validation_policy)
         fit_rows, val_rows = [records["train"][int(i)] for i in a], [records["train"][int(i)] for i in b]
-    fold_epoch_policy = getattr(args, "fold_epoch_policy", "fixed")
     config = {"version": 1, "mode": args.mode, "input_hashes": {k: sha256_file(v) for k, v in paths.items()},
               "preparation_sha256": sha256_file(args.prepared / "preparation.json"), "learning_rates": args.learning_rates,
               "epochs": args.epochs, "batch_size": args.batch_size, "accumulation": args.accumulation,
@@ -60,7 +62,9 @@ def train_reader(args):
               "architecture_sha256": sha256_file(Path(__file__).with_name("pair_reader.py"))}
     if fold is not None:
         # Only added in release mode so historical run bindings stay byte-identical.
-        config["release"] = {**fold.binding(), "fold_epoch_policy": fold_epoch_policy}
+        config["release"] = {**fold.binding(), "epoch_policy": "fixed: last epoch kept, validation curve recorded",
+                             "selection": "release policy: validation balanced accuracy over argmax and Supported-score "
+                                          "thresholds; frozen before evaluation; no refit"}
         config["validation_policy"] = "released_fold"
         config.pop("validation_seed")
     output = args.output
@@ -85,9 +89,9 @@ def train_reader(args):
                     loss_normalization=getattr(args, "loss_normalization", "sample_mean"))
 
     def training_args(directory, lr, epochs, validation):
-        # A fixed-schedule fold run still evaluates every epoch (the validation
-        # curve) but reports the last epoch instead of selecting on validation.
-        select_best = validation and not (fold is not None and fold_epoch_policy == "fixed")
+        # A fold run still evaluates every epoch (the validation curve) but keeps
+        # the last epoch, like the release's fixed-schedule DistilBERT trials.
+        select_best = validation and fold is None
         return TrainingArguments(output_dir=str(directory), learning_rate=lr, num_train_epochs=epochs,
             per_device_train_batch_size=args.batch_size, per_device_eval_batch_size=args.batch_size,
             gradient_accumulation_steps=args.accumulation, weight_decay=.01, warmup_ratio=.06,
@@ -106,13 +110,17 @@ def train_reader(args):
                  "probabilities": dict(zip(CANONICAL_LABELS, map(float, vector), strict=True))} for r, vector in zip(rows, probabilities, strict=True)]
 
     def metric_fn(evaluation):
-        return {k: evaluate_predictions(predictions(evaluation.predictions, val_rows))[k] for k in ("macro_f1", "accuracy")}
+        rows = predictions(evaluation.predictions, val_rows)
+        metrics = {k: evaluate_predictions(rows)[k] for k in ("macro_f1", "accuracy")}
+        if fold is not None:
+            metrics["binary_balanced_accuracy"] = decision_metrics(rows)["binary_balanced_accuracy"]
+        return metrics
 
     trials = []
     for lr in args.learning_rates:
         directory = output / "trials" / f"lr_{lr:g}"
         summary_path = directory / "summary.json"
-        if summary_path.is_file():
+        if summary_path.is_file() and (fold is None or (directory / "model" / "config.json").is_file()):
             trials.append(json.loads(summary_path.read_text(encoding="utf-8")))
             continue
         trainer = Trainer(model=new_model(fit_rows), args=training_args(directory, lr, args.epochs, True),
@@ -124,9 +132,15 @@ def train_reader(args):
         checkpoint_state = json.loads((Path(trainer.state.best_model_checkpoint) / "trainer_state.json").read_text())
         report = {**evaluate_predictions(val_predictions), "learning_rate": lr, "best_epoch": checkpoint_state["epoch"]}
         if fold is not None:
-            report["reported_epoch"] = trainer.state.epoch if fold_epoch_policy == "fixed" else checkpoint_state["epoch"]
-            report["validation_curve"] = [{"epoch": e["epoch"], "macro_f1": e["eval_macro_f1"], "loss": e.get("eval_loss")}
-                                          for e in trainer.state.log_history if "eval_macro_f1" in e]
+            # The trial's last-epoch weights are its candidate for the frozen evaluation.
+            trainer.save_model(str(directory / "model"))
+            tokenizer.save_pretrained(directory / "model")
+            curve, policy = threshold_study(val_predictions)
+            report.update({"reported_epoch": trainer.state.epoch, "selected_policy": policy, "threshold_curve": curve,
+                           "validation_curve": [{"epoch": e["epoch"], "macro_f1": e["eval_macro_f1"],
+                                                 "binary_balanced_accuracy": e.get("eval_binary_balanced_accuracy"),
+                                                 "loss": e.get("eval_loss")}
+                                                for e in trainer.state.log_history if "eval_macro_f1" in e]})
         report["predicted_label_counts"] = {label: sum(p["predicted_label"] == label for p in val_predictions) for label in CANONICAL_LABELS}
         atomic_jsonl(val_predictions, directory / "validation_predictions.jsonl")
         write_json(report, summary_path)
@@ -135,22 +149,18 @@ def train_reader(args):
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+    if fold is not None:
+        evaluate_fold(args, fold, config, trials, eval_rows, tokenizer, collator, dataset_kwargs)
+        return
     chosen = sorted(trials, key=selection_key)[0]
     selection = {"selected": chosen, "trials": trials, "selection_metric": "train-only holdout macro-F1; safety errors break ties",
                  "validation_policy": args.validation_policy, "fit_claim_ids": [r["claim_id"] for r in fit_rows],
                  "validation_claim_ids": [r["claim_id"] for r in val_rows]}
-    if fold is not None:
-        selection.update({"release": config["release"], "selection_metric":
-            f"released fold {fold.fold_id} validation macro-F1 ({fold_epoch_policy} epoch); safety errors break ties"})
-        if len(trials) > 1 or fold_epoch_policy == "best":
-            selection["caveat"] = "Validation IDs chose the configuration; the selected score is optimistic for this fold."
     write_json(selection, output / "model_selection.json")
     print("Selected train-holdout score:", chosen["macro_f1"], "epoch:", chosen.get("reported_epoch", chosen["best_epoch"]), flush=True)
     print("Holdout predictions per class:", chosen.get("predicted_label_counts"), flush=True)
     print("Holdout F1 per class:", {label: chosen["per_class"][label]["f1-score"] for label in CANONICAL_LABELS}, flush=True)
-    if args.selection_only or fold is not None:
-        # A fold result is its validation score; refitting on all train claims
-        # would consume that fold's validation IDs.
+    if args.selection_only:
         return
     final = output / "final_model"
     if not (output / "final_fit_complete.json").is_file():
@@ -178,3 +188,57 @@ def train_reader(args):
     metrics = predict_cached(records["dev"], predict_batch, output / "dev", batch_size=args.batch_size, description=f"Pair reader / {args.mode}")
     write_json({**metrics, "selected_train_holdout": chosen, "model_path": str(final)}, output / "final_dev_metrics.json")
     print(json.dumps(metrics, indent=2))
+
+
+def predict_rows(model, rows, tokenizer, collator, dataset_kwargs, *, device, batch_size):
+    """Frozen inference: prediction rows with normalized scores and the shown passage IDs."""
+    import torch
+    from src.verification.pair_reader import PairDataset
+
+    dataset = PairDataset(rows, tokenizer, **dataset_kwargs)
+    model.to(device).eval()
+    vectors = []
+    for start in range(0, len(dataset), batch_size):
+        batch = collator([dataset[i] for i in range(start, min(start + batch_size, len(dataset)))])
+        batch = {k: v.to(device) for k, v in batch.items() if k != "labels"}
+        with torch.inference_mode(), torch.autocast(device_type="cuda", dtype=torch.float16, enabled=device.startswith("cuda")):
+            vectors.extend(model(**batch).logits.float().softmax(-1).cpu().tolist())
+    return [{"claim_id": r["claim_id"], "true_label": r["label"],
+             "predicted_label": CANONICAL_LABELS[int(np.argmax(v))],
+             "probabilities": dict(zip(CANONICAL_LABELS, map(float, v), strict=True)),
+             "evidence_passage_ids": [p["passage_id"] for p in (r.get("retrieved_evidence") or [])[:3]]}
+            for r, v in zip(rows, vectors, strict=True)]
+
+
+def evaluate_fold(args, fold, config, trials, eval_rows, tokenizer, collator, dataset_kwargs):
+    """Freeze the validation choice, then score the fold's later evaluation claims once."""
+    from src.verification.pair_reader import EvidencePairReader
+
+    output = args.output
+    chosen = min(trials, key=lambda t: trust_selection_key(t["selected_policy"]))
+    trial = f"lr_{chosen['learning_rate']:g}"
+    frozen = {"release": config["release"], "trial": trial, "learning_rate": chosen["learning_rate"],
+              "epochs": args.epochs, "policy": chosen["selected_policy"],
+              "trials": [{"trial": f"lr_{t['learning_rate']:g}", "selected_policy": t["selected_policy"],
+                          "validation_macro_f1": t["macro_f1"]} for t in trials],
+              "frozen_before_evaluation": True}
+    # bind_run refuses a later run whose choice differs from the frozen one.
+    bind_run(output / "selection_before_evaluation.json", frozen)
+    print("Frozen validation choice:", trial, json.dumps(chosen["selected_policy"]), flush=True)
+    done = output / "evaluation_complete.json"
+    if done.is_file():
+        print("Evaluation already complete:", done, flush=True)
+        return
+    model = EvidencePairReader.from_pretrained(output / "trials" / trial / "model")
+    rows = predict_rows(model, eval_rows, tokenizer, collator, dataset_kwargs, device=args.device, batch_size=args.batch_size)
+    atomic_jsonl(rows, output / "evaluation_predictions.jsonl")
+    threshold = frozen["policy"]["threshold"]
+    result = {"protocol_id": fold.protocol_id, "fold_id": fold.fold_id, "family": "nli_pair_reader",
+              "mode": args.mode, "selected_trial": trial, "selected_policy": frozen["policy"],
+              "evaluation": decision_metrics(rows, threshold), "argmax_evaluation": decision_metrics(rows),
+              "four_class_argmax_metrics": evaluate_predictions(rows),
+              "four_class_selected_policy_metrics": evaluate_predictions(apply_policy(rows, threshold)),
+              "evidence": f"Prepared '{args.mode}' top three per claim (see reader_run.json for the preparation hash).",
+              "evaluation_claim_count": len(eval_rows), "selection_frozen_before_evaluation": True}
+    write_json(result, done)
+    print("EVALUATION", json.dumps({k: result[k] for k in ("fold_id", "selected_trial", "selected_policy", "evaluation")}), flush=True)

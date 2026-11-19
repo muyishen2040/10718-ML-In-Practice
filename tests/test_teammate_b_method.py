@@ -9,7 +9,8 @@ import numpy as np
 import pytest
 
 from src.data.averitec import CANONICAL_LABELS
-from src.evaluation.team_release import fold_rows, load_release_fold, read_release_pointer, validate_manifest
+from src.evaluation.team_release import fold_rows, load_release_fold, read_release_pointer
+from src.evaluation.temporal_protocol import describe
 from src.retrieval.decisive_evidence import (build_sheet, read_annotations, sample_claims, select_candidates,
                                              selector_targets, validate_annotations, write_csv)
 from src.retrieval.evidence_selector import (FEATURE_NAMES, candidate_features, cached_nli, fit_selector,
@@ -39,54 +40,59 @@ def pool(record, n=12):
     return {"claim_id": record["claim_id"], "claim": record["claim"], "retrieved": rows}
 
 
-def write_release(tmp_path, records, fit, val, *, fold="w1", tamper=False):
-    data_root = tmp_path / "data"
-    manifest = {"protocol_id": "test_v1", "folds": [{"fold_id": fold, "fit_claim_ids": fit, "validation_claim_ids": val}]}
+def dated_claims(n=40):
+    """Claims with four distinct dates (2010-2013), ten per year, for chronological partitions."""
+    return [{**r, "metadata": {"claim_date": f"{2010 + i // 10}-01-02"}} for i, r in enumerate(claims(n))]
+
+
+def write_release(tmp_path, records, *, fold="w1", data_root=None, tamper=False):
+    """Publish a release in the shared schema: fit 2010-11, validation 2012, evaluation 2013."""
+    data_root = data_root or tmp_path / "data"
+    train_path = data_root / "processed/averitec/train.jsonl"
+    if not train_path.is_file():
+        write_jsonl(records, train_path)
+    parts = {"fit": records[:20], "validation": records[20:30], "evaluation": records[30:40]}
+    manifest = {"schema_version": 1, "protocol_id": "test_v1", "source_train_sha256": sha256_file(train_path),
+                "folds": [{"fold_id": fold, "ids": {k: [r["claim_id"] for r in v] for k, v in parts.items()},
+                           "summary": {k: describe(v) for k, v in parts.items()}}]}
     path = data_root / "processed/averitec/team_splits/test_v1/split_manifest.json"
     write_json(manifest, path)
     digest = sha256_file(path)
     if tamper:
-        manifest["folds"][0]["fit_claim_ids"] = fit[:-1]
+        manifest["folds"][0]["ids"]["fit"] = manifest["folds"][0]["ids"]["fit"][:-1]
         write_json(manifest, path)
     config = tmp_path / "team_evaluation.json"
     write_json({"status": "ready", "protocol_id": "test_v1", "fold_ids": [fold],
                 "split_manifest": {"relative_path": "processed/averitec/team_splits/test_v1/split_manifest.json", "sha256": digest}}, config)
-    return config, data_root
+    return config, data_root, parts
 
 
-def test_pending_release_is_refused():
+def test_pending_release_is_refused(tmp_path):
+    write_json({"status": "pending", "protocol_id": None, "split_manifest": None}, tmp_path / "pending.json")
     with pytest.raises(RuntimeError, match="not ready"):
-        read_release_pointer(ROOT / "configs/team_evaluation.json")
+        read_release_pointer(tmp_path / "pending.json")
 
 
-def test_release_fold_loads_verified_ordered_fold(tmp_path):
-    records = claims()
-    fit, val = [r["claim_id"] for r in records[:20]], [r["claim_id"] for r in records[20:]]
-    config, data_root = write_release(tmp_path, records, fit, val)
-    fold = load_release_fold(config, data_root, "w1", records)
-    a, b = fold_rows(records, fold)
-    assert [r["claim_id"] for r in a] == fit and [r["claim_id"] for r in b] == val
-    assert fold.binding()["fit_claim_count"] == 20
+def test_release_fold_loads_verified_three_partitions(tmp_path):
+    records = dated_claims()
+    config, data_root, parts = write_release(tmp_path, records)
+    train_path = data_root / "processed/averitec/train.jsonl"
+    fold = load_release_fold(config, data_root, "w1", records, train_claims_path=train_path)
+    rows = fold_rows(records, fold)
+    assert {k: [r["claim_id"] for r in v] for k, v in rows.items()} == {k: [r["claim_id"] for r in v] for k, v in parts.items()}
+    assert fold.binding()["fit_claim_count"] == 20 and fold.binding()["evaluation_claim_count"] == 10
     with pytest.raises(ValueError, match="not among released"):
-        load_release_fold(config, data_root, "w2", records)
+        load_release_fold(config, data_root, "w2", records, train_claims_path=train_path)
     with pytest.raises(ValueError, match="official dev"):
-        load_release_fold(config, data_root, "w1", records, forbidden_ids={fit[0]})
-    config, data_root = write_release(tmp_path / "t", records, fit, val, tamper=True)
+        load_release_fold(config, data_root, "w1", records, train_claims_path=train_path,
+                          forbidden_ids={parts["evaluation"][0]["claim_id"]})
+    other = tmp_path / "other_train.jsonl"
+    write_jsonl(records[::-1], other)
+    with pytest.raises(ValueError, match="different source claims"):
+        load_release_fold(config, data_root, "w1", records, train_claims_path=other)
+    config, data_root, _ = write_release(tmp_path / "t", records, tamper=True)
     with pytest.raises(ValueError, match="hash differs"):
-        load_release_fold(config, data_root, "w1", records)
-
-
-@pytest.mark.parametrize("change, message", [
-    (lambda f, v: (f, v + f[:1]), "reuses"),
-    (lambda f, v: (v, f), "earlier-to-later"),
-    (lambda f, v: (f + ["train:missing"], v), "absent"),
-    (lambda f, v: (f + f[:1], v), "duplicate"),
-])
-def test_manifest_validation_rejects_bad_folds(change, message):
-    records = claims()
-    fit, val = change([r["claim_id"] for r in records[:20]], [r["claim_id"] for r in records[20:]])
-    with pytest.raises(ValueError, match=message):
-        validate_manifest({"protocol_id": "x", "folds": [{"fold_id": "w1", "fit_claim_ids": fit, "validation_claim_ids": val}]}, records)
+        load_release_fold(config, data_root, "w1", records, train_claims_path=train_path)
 
 
 def test_pilot_sheet_balances_labels_and_marks_candidate_reasons(tmp_path):
@@ -254,30 +260,45 @@ def _prepared(tmp_path, directory):
 
 
 def _train_args(data, prepared, output, **extra):
-    return argparse.Namespace(prepared=prepared, data_root=data, mode="raw", output=output, device="cpu", validation_seed=718,
-                              validation_policy="grouped", learning_rates=[.001], epochs=2, batch_size=8, accumulation=1, seed=718,
-                              distillation_weight=.1, selection_only=False, **extra)
+    values = dict(prepared=prepared, data_root=data, mode="raw", output=output, device="cpu", validation_seed=718,
+                  validation_policy="grouped", learning_rates=[.001], epochs=2, batch_size=8, accumulation=1, seed=718,
+                  distillation_weight=.1, selection_only=False)
+    return argparse.Namespace(**{**values, **extra})
 
 
-def test_release_fold_training_reports_fixed_epoch_curve_without_refit(tmp_path):
+def test_release_fold_training_freezes_validation_choice_then_scores_evaluation(tmp_path):
     from src.verification.pair_training import train_reader
 
     data, prepared = _prepared(tmp_path, _tiny_nli(tmp_path))
     records = read_jsonl(data / "processed/averitec/train.jsonl")
-    fit, val = [r["claim_id"] for r in records[:30]], [r["claim_id"] for r in records[30:]]
-    config, release_root = write_release(tmp_path, records, fit, val)
-    assert release_root == data
-    args = _train_args(data, prepared, tmp_path / "fold", release_config=config, fold_id="w1", fold_epoch_policy="fixed")
+    config, _, parts = write_release(tmp_path, records, data_root=data)
+    args = _train_args(data, prepared, tmp_path / "fold", release_config=config, fold_id="w1", learning_rates=[.001, .002])
     train_reader(args)
-    selection = json.loads((args.output / "model_selection.json").read_text())
-    assert selection["release"]["fold_id"] == "w1" and selection["validation_claim_ids"] == val
-    chosen = selection["selected"]
-    assert chosen["reported_epoch"] == 2.0 and [p["epoch"] for p in chosen["validation_curve"]] == [1.0, 2.0]
-    assert chosen["claim_count"] == 10
+    trial = json.loads((args.output / "trials/lr_0.001/summary.json").read_text())
+    assert trial["reported_epoch"] == 2.0 and [p["epoch"] for p in trial["validation_curve"]] == [1.0, 2.0]
+    assert trial["claim_count"] == 10 and len(trial["threshold_curve"]) == 18
+    assert (args.output / "trials/lr_0.001/model/config.json").is_file()
+    frozen = json.loads((args.output / "selection_before_evaluation.json").read_text())
+    assert frozen["frozen_before_evaluation"] and len(frozen["trials"]) == 2
+    result = json.loads((args.output / "evaluation_complete.json").read_text())
+    assert result["evaluation"]["claim_count"] == 10 and result["selected_policy"] == frozen["policy"]
+    predictions = read_jsonl(args.output / "evaluation_predictions.jsonl")
+    assert [r["claim_id"] for r in predictions] == [r["claim_id"] for r in parts["evaluation"]]
+    assert len(predictions[0]["evidence_passage_ids"]) == 3
     assert not (args.output / "final_model").exists() and not (args.output / "dev").exists()
     run_config = json.loads((args.output / "reader_run.json").read_text())
     assert run_config["validation_policy"] == "released_fold" and "validation_seed" not in run_config
-    train_reader(args)  # resumes from the completed trial summary
+    assert run_config["release"]["evaluation_claim_count"] == 10
+    train_reader(args)  # resumes: completed trials and evaluation are reused
+
+    # The release's own scorer accepts the prediction file for this partition.
+    manifest = data / "processed/averitec/team_splits/test_v1/split_manifest.json"
+    command = [sys.executable, str(ROOT / "scripts/score_trust_predictions.py"), "--data-root", str(data),
+               "--manifest", str(manifest), "--fold", "w1", "--predictions", str(args.output / "evaluation_predictions.jsonl")]
+    if frozen["policy"]["threshold"] is not None:
+        command += ["--threshold", str(frozen["policy"]["threshold"])]
+    scored = json.loads(subprocess.run(command, check=True, capture_output=True, text=True, cwd=ROOT).stdout)
+    assert scored["binary_balanced_accuracy"] == pytest.approx(result["evaluation"]["binary_balanced_accuracy"])
 
 
 def test_saved_reader_mechanics_rescore_frozen_inference_and_adapter(tmp_path):

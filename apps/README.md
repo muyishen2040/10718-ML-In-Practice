@@ -1,7 +1,8 @@
 # Interface and backend placement
 
-This directory is the home for the product layer. No extension or backend has
-been implemented by this organization change. Proposed implementation paths:
+This directory contains the prototype extension and development backend.
+Use [SETUP.md](SETUP.md) for local serving or [COLAB_BACKEND.md](COLAB_BACKEND.md)
+for the shared-Drive CPU runtime and private local connection. Code locations:
 
 ```text
 apps/

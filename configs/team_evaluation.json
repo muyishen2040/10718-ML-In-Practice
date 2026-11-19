@@ -1,10 +1,13 @@
 {
   "schema_version": 1,
-  "status": "pending",
-  "protocol_id": null,
-  "split_manifest": null,
-  "fold_ids": [],
-  "evaluation_command": null,
+  "status": "ready",
+  "protocol_id": "trust_temporal_20261117_v1",
+  "split_manifest": {
+    "relative_path": "processed/averitec/team_splits/trust_temporal_20261117_v1/split_manifest.json",
+    "sha256": "af2d5436167ed39f658255c099b41acab16cdd1ecc89e25e42a95bfd0af20d5e"
+  },
+  "fold_ids": ["spring_2020", "summer_2020"],
+  "evaluation_command": "python scripts/score_trust_predictions.py --data-root DATA_ROOT --manifest MANIFEST --fold FOLD_ID --predictions PREDICTIONS",
   "shared_data_root_relative_to_shortcut": "v2_source_documents",
   "historical_benchmark": {
     "claims_relative_path": "processed/averitec/dev.jsonl",
@@ -13,15 +16,19 @@
     "url_judged_claim_count": 386
   },
   "metrics": {
-    "primary": "four_class_macro_f1",
+    "primary": "binary_balanced_accuracy",
+    "historical_primary": "four_class_macro_f1",
     "display_k": 3,
     "false_reassurance": "non-Supported gold predicted Supported",
     "false_alarm": "Supported gold predicted another label",
-    "historical_error_rate_denominator": "all 500 official dev claims"
+    "historical_error_rate_denominator": "all 500 official dev claims",
+    "conditional_false_reassurance_denominator": "all non-Supported claims in the stated evaluation population",
+    "conditional_false_alarm_denominator": "all Supported claims in the stated evaluation population"
   },
   "notes": [
-    "Time-based training splits and a shared evaluation entry point are planned.",
-    "While pending, no shared split path, fold IDs or new evaluation command are available.",
+    "Released November 17, 2026 for the field-evaluation report revision.",
+    "Missing dates and pre-2000 dates are quarantined; earlier duplicate claim text is purged at partition boundaries.",
+    "Use explicit fit, validation and future evaluation IDs; freeze thresholds before future-window scoring.",
     "This pointer coordinates the team; existing runners do not automatically load it.",
     "Official dev and test are not reassigned by this file."
   ]

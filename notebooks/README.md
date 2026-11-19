@@ -7,6 +7,7 @@ or that the file is already available on the remote branch.
 
 | Notebook | When to use it | Existing artifact root under `DATA_ROOT/outputs` |
 | --- | --- | --- |
+| [extension_backend_cpu_colab.ipynb](extension_backend_cpu_colab.ipynb) | Load the saved model/evidence on CPU for a private extension test; see [setup](../apps/COLAB_BACKEND.md) | Runtime-only serving cache; shared inputs unchanged |
 | [evidence_reader_followup_colab.ipynb](evidence_reader_followup_colab.ipynb) | Latest completed weighting/distillation/QA study; inspect or reproduce deliberately | `evidence_reader_followup_v2` |
 | [evidence_aware_reader_colab.ipynb](evidence_aware_reader_colab.ipynb) | Original NLI scoring and pair-reader reference, before the later weighting correction; reuse cached inputs | `evidence_aware_reader_v1` |
 

@@ -1,29 +1,39 @@
 # Shared evaluation release
 
-The planned evaluation uses time-based splits inside the official AVeriTeC
+The released evaluation uses time-based splits inside the official AVeriTeC
 training set. Local and hosted models must use the same published split and
 evaluation entry point. Do not invent independent replacement splits for the
 team's comparable result table.
 
 The release pointer is [configs/team_evaluation.json](../configs/team_evaluation.json).
-Its initial status is **pending**: no temporal split manifest, fold IDs or new
-evaluation command have been published by this repository cleanup. Existing
-notebooks still use their historical selection rules unless explicitly adapted.
-The pointer is a coordination file, not an automatic change to existing runners.
+Protocol `trust_temporal_20261117_v1` was released on November 17, 2026 on
+`feat/part1-temporal-evaluation`. Its manifest is saved under
+`processed/averitec/team_splits/trust_temporal_20261117_v1/split_manifest.json`
+in shared Drive. The pointer records its SHA-256. Existing notebooks require
+explicit adaptation to consume it.
 
-## What can proceed while the release is pending
+## Released windows and runners
 
-- A can build the extension, mock responses and backend boundary.
-- B can inspect code and artifacts, reproduce already-recorded inference, and
-  prepare training/selector changes. Reproducing old scores is a mechanics check,
-  not an independent result on a newly proposed validation set.
-- C can implement provider adapters, mock calls, output parsing and resumability.
-  Use designated training-fit smoke cases for paid prompt pilots after release.
+- `spring_2020` uses 1,411 fit claims through November 8, 2019, 355 validation
+  claims from November 9 through February 29, 2020, and 575 evaluation claims
+  from March 1 through June 3, 2020.
+- `summer_2020` uses 1,870 fit claims through March 15, 2020, 468 validation
+  claims from March 16 through June 3, and 611 evaluation claims from June 4
+  through August 25, 2020.
+- The manifest quarantines 105 missing dates and nine pre-2000 date values.
+  It preserves their IDs and raw values. Earlier copies of normalized claim
+  text are purged when they cross partition boundaries. Date ties stay together.
+- `scripts/run_part1_revision.py` prepares the release, recalculates historical
+  dev metrics, trains logistic regression and DistilBERT, and summarizes results.
+  `scripts/score_trust_predictions.py` validates coverage and scores a released
+  partition. Historical reader notebooks still need manifest integration.
 
-New comparative training and prompt selection wait for the released split.
-This does not block implementation work that does not use validation labels.
+Select hyperparameters and Supported-score thresholds on each fold's validation
+partition before future-window prediction. The first revision evaluates the
+selected fit-trained checkpoint directly, retaining validation as held out.
+Rolling windows share historical training data. Report each window separately.
 
-## Release checklist
+## Checklist for subsequent releases
 
 1. Audit training dates, missing dates, duplicate groups and per-class counts.
    Define two earlier-to-later windows initially, adjusting date boundaries to
@@ -31,7 +41,7 @@ This does not block implementation work that does not use validation labels.
    any excluded claims. Keep a duplicate group from crossing fit/validation.
 2. Save an immutable manifest in a new versioned Drive directory. A suggested
    location is `processed/averitec/team_splits/PROTOCOL_ID/split_manifest.json`
-   relative to `DATA_ROOT`; this directory is proposed and not yet populated.
+   relative to `DATA_ROOT`. Use a new directory for each subsequent release.
 3. Include a protocol ID, hash of the normalized source claims, per-fold fit and
    validation claim IDs, date boundaries, class counts and exclusion policies.
    Validate no duplicate/unknown IDs, no overlap and the claimed time order.
@@ -49,18 +59,18 @@ This does not block implementation work that does not use validation labels.
    results. Do not overwrite the same manifest while teammates are running it.
 
 Before release, agree on the manifest schema and loader across model runners.
-Current helper functions are useful building blocks,
-Teammate B has added a *proposed* loader, [team_release.py](../src/evaluation/team_release.py),
-which verifies the pointer, manifest hash, fold IDs, overlap and time order; its
-docstring gives the proposed manifest schema. `run_evidence_reader.py train` and
-`train_transformer_verifier.py` accept `--release-config` and `--fold-id`. Confirm
-or amend that schema with the release owner and C before publishing the manifest.
+The revision runner consumes the published manifest. The pair reader consumes it
+through [team_release.py](../src/evaluation/team_release.py), which follows this
+pointer, checks the manifest hash and reuses `temporal_protocol.validate_manifest`:
+`run_evidence_reader.py train --release-config configs/team_evaluation.json --fold-id FOLD`
+fits on `fit`, chooses the learning rate and Supported threshold on `validation`,
+freezes that choice, then scores `evaluation` once without refitting.
 
 ## Loading the published path in Colab
 
 After mounting the shared Drive and checking out the published repository, this
 cell resolves the common manifest. It does not train a model or implement the
-future evaluator. Keep `DATA_ROOT` as a shared input and `OUT` personal.
+models. Keep `DATA_ROOT` as a shared input and `OUT` personal.
 
 ```python
 import hashlib
@@ -101,13 +111,25 @@ revision. Do not assume bundled historical notebooks contain this new file.
 - Retain the fixed 500 official dev claims for the historical end-to-end
   comparison. Official test remains untouched. Date-window results and original
   dev results are separate tables with explicit populations.
-- Primary metric is four-class macro-F1. Also report accuracy, per-class scores,
-  confusion matrix, FR/FA counts and denominators. Historical FR/FA rates divide
-  by all 500 dev claims; a fold uses its stated population. Missing predictions
-  or API errors must be reported, not silently removed or relabeled NEI.
-- The display budget is three passages. URL-proxy retrieval uses the original
-  386 judged dev claims; MRR@3 and MRR over top 20 must remain separately named.
-  Gold-answer controls and web-assisted runs are separate evidence settings.
+- Primary metric is Supported-versus-other binary balanced accuracy, the mean
+  of Supported acceptance recall and other-claim withholding recall. Report
+  four-class macro-F1 and accuracy as secondary diagnostics. Conditional FR
+  divides by non-Supported claims and conditional FA divides by Supported
+  claims. Retain historical all-claim rates with their original labels.
+  Report missing predictions and API errors explicitly.
+- The display budget is three passages. URL-proxy Hit@3 on the original 386
+  judged dev claims is a secondary retrieval diagnostic, not the verdict-model
+  selection metric. Historical MRR values remain in archived artifacts; their
+  ranking scopes must be named if reused. Gold-answer controls and web-assisted
+  runs are separate evidence settings.
+
+The task outcome is a participant making a correct trust decision about a claim.
+The binary model metric measures the corresponding model decisions, giving
+Supported and other claims equal weight. It aligns most directly with a task
+evaluation that also weights those two groups equally. Natural-prevalence task
+accuracy has different weights. Better offline decisions can fail to help users
+if they ignore useful evidence, overtrust wrong verdicts or encounter different
+claims. A randomized field evaluation must measure the human outcome directly.
 
 Every update records the protocol ID, manifest hash, fold ID, input rankings,
 code/model/prompt version and exact artifact links. Review teammate updates
@@ -130,5 +152,5 @@ Keep failed requests in a separate error journal until resolved.
 metrics from completed rows. It does not check the expected claim-ID population
 or detect duplicate IDs on its own. The caller must validate exact coverage,
 unique IDs and correct gold-label joins before reporting a full-population
-score. The shared evaluation command must enforce these checks;
-that command remains pending rather than being supplied by this helper.
+score. `scripts/score_trust_predictions.py` enforces these checks and joins
+gold labels outside inference.

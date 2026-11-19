@@ -7,6 +7,12 @@ The user makes the final trust or sharing decision.
 
 ## Read before starting
 
+For a request to set up the extension for user testing, use the published
+`feat/colab-extension-backend` branch and start with
+[the complete backend/extension setup](apps/COLAB_BACKEND.md). This task belongs
+to interface work; no additional role clarification is needed. That guide covers
+Drive access, the private CPU backend, local relay, model selector and shutdown.
+
 1. [Team handoff](docs/TEAM_HANDOFF.md): access, Colab setup, Git workflow,
    artifact locations, and the current bottlenecks.
 2. [Progress and results](docs/TEAM_PROGRESS.md): distinguish the submitted

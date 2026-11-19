@@ -9,14 +9,16 @@ their helpers. Experimental CLI entry points are not necessarily unused code.
 
 | Entry point | Purpose | Current guidance |
 | --- | --- | --- |
-| [run_evidence_reader.py](run_evidence_reader.py) | Prepare cached evidence, train/read, and compare the NLI pair reader; `mechanics` inspects a saved run, `infer` feeds a frozen reader other passages | Main local-method starting point; `train --release-config --fold-id` consumes the released split (proposed manifest schema in `src/evaluation/team_release.py`) |
+| [run_part1_revision.py](run_part1_revision.py) | Historical trust-metric recalculation and two temporal classifier comparisons | Released November 17; uses the shared manifest and freezes thresholds before evaluation |
+| [score_trust_predictions.py](score_trust_predictions.py) | Coverage-checked binary and four-class scoring | Accepts official dev or an explicit released temporal partition |
+| [run_evidence_reader.py](run_evidence_reader.py) | Prepare cached evidence, train/read, and compare the NLI pair reader; `mechanics` inspects a saved run, `infer` feeds a frozen reader other passages | Main local-method starting point; `train --release-config --fold-id` follows the released fit/validation/evaluation protocol |
 | [run_evidence_selector.py](run_evidence_selector.py) | Decisive-evidence pilot sheets/audit and a small selector over saved BM25 top-100 pools | B's step 3-5 tooling; selector training requires the released fit IDs |
 | [run_answer_followup.py](run_answer_followup.py) | Reuse/generate questions and extract QA contexts | Reproduction/reference for completed weighting/QA study; QA is not the new default |
-| [train_transformer_verifier.py](train_transformer_verifier.py) | DistilBERT and other transformer baselines | Keep as a comparator and shared input helper; `--release-config --fold-id` fits a released fold and scores only its validation IDs |
+| [train_transformer_verifier.py](train_transformer_verifier.py) | DistilBERT and other transformer baselines | Keep as a comparator and shared input helper; temporal DistilBERT runs use `run_part1_revision.py` |
 | [train_tfidf_logreg.py](train_tfidf_logreg.py) | Cheap supervised baseline and evidence joins | Useful CPU comparator |
 | [run_llm_baseline.py](run_llm_baseline.py) | Hosted OpenAI baseline skeleton | C must address resume/cache binding and incomplete-claim handling before a full run |
 | [run_local_llm_baseline.py](run_local_llm_baseline.py) | Local Qwen baseline | Earlier report comparator; reuse saved results when possible |
-| [evaluate_end_to_end.py](evaluate_end_to_end.py), [generate_baseline_report.py](generate_baseline_report.py) | Earlier scoring/report entry points | Do not confuse these with the planned shared evaluator that has not been released |
+| [evaluate_end_to_end.py](evaluate_end_to_end.py), [generate_baseline_report.py](generate_baseline_report.py) | Earlier scoring/report entry points | Use the released scorer above for the new temporal comparison |
 
 ## Saved-data preparation and retrieval
 
@@ -51,6 +53,10 @@ make them recommended next experiments:
   is not evidence of a completed external evaluation.
 
 ## Notebook builders and dependencies
+
+`build_extension_backend_notebook.py` builds the portable CPU serving notebook.
+`colab_extension.ps1` prepares its named session and starts the local authenticated
+relay on Windows/WSL. See [the backend guide](../apps/COLAB_BACKEND.md).
 
 `build_evidence_reader_notebook.py` and `build_answer_followup_notebook.py` build
 the current reader reproduction notebooks. `build_limitation_notebook.py` now

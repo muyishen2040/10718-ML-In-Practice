@@ -41,10 +41,10 @@ Reuse the saved split-specific BM25 rankings under `outputs/bm25/`; model calls
 need their retrieved text, not a rebuild of the full passage corpus. Write new
 outputs to a unique personal Drive run directory.
 
-The time-based fit/validation manifest path and hash will be published through
-[team_evaluation.json](../../configs/team_evaluation.json). While
-pending, implement mocks, parsing, caching and integration. Start paid prompt
-pilots on designated training-fit cases after release. Do not choose a private
+The time-based fit/validation/future-evaluation manifest is released on
+`feat/part1-temporal-evaluation`, with its path and hash in
+[team_evaluation.json](../../configs/team_evaluation.json). Use the designated
+training-fit cases for initial prompt pilots. Do not choose a private
 replacement split or tune on official dev to speed up comparison.
 
 ## First bounded experiment sequence
@@ -56,7 +56,8 @@ replacement split or tune on official dev to speed up comparison.
    error/retry handling, interruption recovery, token use and approximate cost.
    A repeated completed request should reuse an exactly matched cache entry.
 3. Compare prompts/models using the released training-validation population,
-   freeze the selected configuration, then run the agreed official-dev evaluation.
+   freeze the selected configuration, then score the released future windows.
+   Keep any historical official-dev comparison in a separate table.
    First hold the claim and BM25 top-three passages fixed, with external search
    disabled, to isolate verifier quality.
 4. Keep all 500 dev claim IDs, including empty-evidence cases. Permit empty source

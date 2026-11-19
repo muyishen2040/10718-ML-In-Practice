@@ -1,17 +1,26 @@
 # Teammate and agent handoff
 
-Updated November 5, 2026. This guide assumes no access to earlier conversations.
+Updated November 17, 2026. This guide assumes no access to earlier conversations.
 The current assignment is A: browser extension/interface; B: local ML method;
 C: hosted API models. Names can replace the A/B/C placeholders.
-The time-based split release is pending. See [EVALUATION.md](EVALUATION.md) and the
-[release pointer](../configs/team_evaluation.json); do not infer that those
-splits or a new evaluation command already exist.
+The time-based split `trust_temporal_20261117_v1` is released on
+`feat/part1-temporal-evaluation`. See [EVALUATION.md](EVALUATION.md) and the
+[release pointer](../configs/team_evaluation.json) for the manifest hash, windows
+and scorer. Historical notebooks need explicit integration with this release.
 
 Root cleanup: current onboarding starts from `README.md` and `AGENTS.md`.
 Dependency profiles live in `requirements/`; earlier specifications/runbooks
 live in `docs/archive/`. The duplicate root guides were removed. Private draft
 notes were preserved in the ignored `local/` directory and are
 not teammate onboarding sources.
+
+**Extension user-test setup:** checkout the published
+[`feat/colab-extension-backend` branch](https://github.com/muyishen2040/10718-ML-In-Practice/tree/feat/colab-extension-backend)
+and follow [apps/COLAB_BACKEND.md](../apps/COLAB_BACKEND.md). This is the route
+for starting the existing frontend and real CPU backend with the model selector.
+The general `main`-branch research instructions below do not include these
+unmerged serving changes. Each testing computer needs its own local relay;
+Drive permissions and Google authorization are not transferred through Git.
 
 ## Start here
 
@@ -121,6 +130,11 @@ git switch --create team/teammate-a-interface origin/main
 Use `team/teammate-b-method` and `team/teammate-c-api` for the other tasks.
 Submit a small PR with the experiment setup, result links and limitations.
 Avoid concurrent work on the same branch or output directory.
+
+For new temporal comparisons, create the task branch from
+`origin/feat/part1-temporal-evaluation` instead of `origin/main`, after fetching
+and preserving local changes. This feature branch contains the released
+manifest pointer and scorer; they have not been merged into `main`.
 
 ## Add shared data to your own Colab
 
@@ -260,6 +274,15 @@ print('Passage fields:', sorted(passages[0]) if passages else [])
 ```
 
 ## Colab code and runtime choices
+
+For the extension's saved-model backend, use the
+[CPU serving guide](../apps/COLAB_BACKEND.md) and portable
+[`extension_backend_cpu_colab.ipynb`](../notebooks/extension_backend_cpu_colab.ipynb).
+This workflow is on `feat/colab-extension-backend`, based on the interface branch
+at `99eadf5`. It mounts shared Drive, copies a small serving bundle into the CPU
+runtime, and uses a private authenticated relay on the extension user's computer.
+It serves known benchmark claims; it does not add live retrieval or change the
+evaluation release. See the November 10 update in the progress record for checks.
 
 Choose one source route per fresh session:
 

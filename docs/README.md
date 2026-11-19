@@ -10,6 +10,7 @@ for teammates and agents who have no access to earlier conversations.
 | [TEAM_WORKPLAN.md](TEAM_WORKPLAN.md) | Current responsibilities, dependencies and integration order |
 | [EVALUATION.md](EVALUATION.md) | Chronological split release and common scoring |
 | [INTEGRATION_CONTRACT.md](INTEGRATION_CONTRACT.md) | Proposed common interface/backend/model boundary |
+| [Colab CPU backend](../apps/COLAB_BACKEND.md) | Shared-Drive model loading and private extension testing on one computer |
 | [Interface task](tasks/TEAMMATE_A_INTERFACE.md) | Browser extension and backend integration |
 | [Local-method task](tasks/TEAMMATE_B_METHOD.md) | Retrieval/selection and verifier improvements |
 | [API-model task](tasks/TEAMMATE_C_API.md) | Hosted verifier comparison and provider adapter |

@@ -5,7 +5,9 @@
 - Completion: **planned**. The code for brief steps 1–5 and the backend adapter is implemented
   and tested on synthetic fixtures. No experiment on AVeriTeC data has run yet.
 - Git branch and commit: `team/teammate-b-method` (on the remote), branched from `origin/main`
-  `0a3a858`. Tooling commit `c98f281`; mechanics-check label-order fix `0ceac8e`. The first data
+  `0a3a858`. Tooling commit `c98f281`; mechanics-check label-order fix `0ceac8e`. On 2026-11-18
+  the branch merged `feat/part1-temporal-evaluation` (release `trust_temporal_20261117_v1`) and
+  adapted the fold tooling to it; see "Adaptation to the published release" below. The first data
   run is recorded in [2026-11-18_teammate-b_mechanics-raw-sample-d01.md](2026-11-18_teammate-b_mechanics-raw-sample-d01.md).
 - Hypothesis and single change: none tested yet. This update adds the tools for the brief's
   bounded sequence: the mechanics check, released-fold fitting, the decisive-evidence pilot,
@@ -77,6 +79,31 @@ Design choices that teammates should review:
   return `insufficient_sources` and a reader failure returns `error`, with
   `verdict: null` and never NEI. The contract version is labelled
   `proposed-v1`.
+
+## Adaptation to the published release (2026-11-18)
+
+The release was published on `feat/part1-temporal-evaluation` with a different schema and
+selection policy from the proposal above, so the proposal is superseded:
+
+- Schema: each fold has `ids.fit`, `ids.validation` and `ids.evaluation`, plus summaries;
+  the source hash field is `source_train_sha256`. `team_release.py` now follows the pointer,
+  checks the manifest hash, calls the release's own `temporal_protocol.validate_manifest`,
+  rejects official dev IDs and returns the three partitions. Its proposed schema is removed.
+- Pair-reader fold runs (`run_evidence_reader.py train --release-config --fold-id`) follow the
+  release policy used for DistilBERT in `run_part1_revision.py`:
+  - each learning rate is trained on `fit` for a fixed number of epochs (last epoch kept);
+    the per-epoch validation curve is recorded;
+  - argmax and Supported-score thresholds 0.10–0.90 are compared on `validation` by binary
+    balanced accuracy, ties broken by conditional FR, then FA, then argmax;
+  - the choice is written to `selection_before_evaluation.json` (bound, so a re-run cannot
+    change it) before `evaluation` is predicted once with that trial's weights, no refit;
+  - outputs: `evaluation_predictions.jsonl` and `evaluation_complete.json`, scorable with
+    `scripts/score_trust_predictions.py`. Fold runs never score official dev.
+- `--fold-epoch-policy` is removed. `train_transformer_verifier.py` is reverted to `main`:
+  the release runner already trains temporal DistilBERT, which is the step-2 comparator.
+- Selector training still takes the fold's fit IDs only.
+- Tests: `python -m pytest -q` → 146 passed, 1 skipped (CPU, tiny offline models). The fold
+  test runs the release's scorer on the reader's evaluation predictions and checks it agrees.
 
 ## Reproduction and artifacts
 

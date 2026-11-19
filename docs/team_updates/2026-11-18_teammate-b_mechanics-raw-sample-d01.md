@@ -12,9 +12,9 @@
 
 ## Inputs and prediction-time availability
 
-- Split manifest / protocol / fold: none. The shared release is still pending. This run uses
-  official dev and the historical grouped train holdout, and it is **not** an independent
-  validation result.
+- Split manifest / protocol / fold: none. The run predates the shared release
+  (`trust_temporal_20261117_v1`). It uses official dev and the historical grouped train
+  holdout, and it is **not** an independent validation result.
 - Inputs (relative to `DATA_ROOT = 10718_averitec/v2_source_documents`):
   - Saved run: `outputs/evidence_reader_followup_v2/pair/raw_sample_d01/`
   - Prepared evidence: `outputs/evidence_aware_reader_v1/prepared/`, mode `raw`. The run is bound
@@ -98,7 +98,7 @@ this check. They are in the run's own `dev/metrics.json`.
     distribution when analysing failures.
   - The holdout score (0.391 on 303 claims) exceeds the dev score (0.360).
 - Next action: label the 20-claim decisive-evidence pilot
-  (`10718_runs/teammate_b/decisive_pilot_v1/decisive_sheet.csv`). Once the release is ready,
-  refit `raw_sample_d01`'s configuration and DistilBERT on each released fold with `--fold-epoch-policy fixed`.
-- Requests: release owner, publish the split (or comment on the proposed manifest schema in
-  `src/evaluation/team_release.py`).
+  (`10718_runs/teammate_b/decisive_pilot_v1/decisive_sheet.csv`), and train `raw_sample_d01`'s
+  configuration on each released fold with `run_evidence_reader.py train --release-config
+  --fold-id`. The comparator is the release's temporal DistilBERT on the same evaluation claims.
+- Requests: none outstanding for the release; it is published on `feat/part1-temporal-evaluation`.
