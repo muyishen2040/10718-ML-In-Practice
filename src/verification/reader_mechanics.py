@@ -86,8 +86,11 @@ def inspect_run(run: Path, *, data_root: Path | None = None, prepared: Path | No
             _check(checks, "run bound to this preparation",
                    run_config.get("preparation_sha256") == sha256_file(prepared / "preparation.json"), None)
         if model_config and preparation.get("nli_label_order"):
-            _check(checks, "model NLI order matches preparation", model_config.get("nli_labels") == preparation["nli_label_order"],
-                   {"model": model_config.get("nli_labels"), "preparation": preparation["nli_label_order"]})
+            # preparation.json keeps the CLI string ("a,b,c"); the model config keeps a list.
+            stored = preparation["nli_label_order"]
+            prepared_order = [s.strip().lower() for s in (stored.split(",") if isinstance(stored, str) else stored)]
+            _check(checks, "model NLI order matches preparation", model_config.get("nli_labels") == prepared_order,
+                   {"model": model_config.get("nli_labels"), "preparation": prepared_order})
 
     if selection:
         chosen = selection.get("selected", {})

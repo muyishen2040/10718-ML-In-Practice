@@ -184,6 +184,15 @@ def test_mechanics_inspection_passes_consistent_run_and_flags_bad_label_order(tm
     assert "verdict label order" in bad["failed_checks"] and "refit uses the selected epoch count" in bad["failed_checks"]
 
 
+@pytest.mark.parametrize("stored, ok", [("contradiction,entailment,neutral", True), (["contradiction", "entailment", "neutral"], True),
+                                        ("entailment,contradiction,neutral", False)])
+def test_mechanics_compares_cli_string_nli_order_with_model_list(tmp_path, stored, ok):
+    run = fake_run(tmp_path)
+    write_json({"nli_label_order": stored, "max_length": 384, "claim_budget": 96}, tmp_path / "prepared/preparation.json")
+    report = inspect_run(run, prepared=tmp_path / "prepared")
+    assert ("model NLI order matches preparation" not in report["failed_checks"]) is ok
+
+
 def test_selector_cli_sheet_and_audit_end_to_end(tmp_path):
     records = claims(12)
     write_jsonl(records, tmp_path / "train.jsonl")
