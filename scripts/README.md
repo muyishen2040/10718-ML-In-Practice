@@ -9,9 +9,10 @@ their helpers. Experimental CLI entry points are not necessarily unused code.
 
 | Entry point | Purpose | Current guidance |
 | --- | --- | --- |
-| [run_evidence_reader.py](run_evidence_reader.py) | Prepare cached evidence, train/read, and compare the NLI pair reader | Main local-method starting point; published split-manifest support still needs wiring |
+| [run_evidence_reader.py](run_evidence_reader.py) | Prepare cached evidence, train/read, and compare the NLI pair reader; `mechanics` inspects a saved run, `infer` feeds a frozen reader other passages | Main local-method starting point; `train --release-config --fold-id` consumes the released split (proposed manifest schema in `src/evaluation/team_release.py`) |
+| [run_evidence_selector.py](run_evidence_selector.py) | Decisive-evidence pilot sheets/audit and a small selector over saved BM25 top-100 pools | B's step 3-5 tooling; selector training requires the released fit IDs |
 | [run_answer_followup.py](run_answer_followup.py) | Reuse/generate questions and extract QA contexts | Reproduction/reference for completed weighting/QA study; QA is not the new default |
-| [train_transformer_verifier.py](train_transformer_verifier.py) | DistilBERT and other transformer baselines | Keep as a comparator and shared input helper |
+| [train_transformer_verifier.py](train_transformer_verifier.py) | DistilBERT and other transformer baselines | Keep as a comparator and shared input helper; `--release-config --fold-id` fits a released fold and scores only its validation IDs |
 | [train_tfidf_logreg.py](train_tfidf_logreg.py) | Cheap supervised baseline and evidence joins | Useful CPU comparator |
 | [run_llm_baseline.py](run_llm_baseline.py) | Hosted OpenAI baseline skeleton | C must address resume/cache binding and incomplete-claim handling before a full run |
 | [run_local_llm_baseline.py](run_local_llm_baseline.py) | Local Qwen baseline | Earlier report comparator; reuse saved results when possible |

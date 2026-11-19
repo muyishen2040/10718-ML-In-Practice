@@ -50,6 +50,25 @@ def main():
             p.add_argument("--loss-normalization", choices=("sample_mean", "batch_weight_mean"), default="sample_mean")
             p.add_argument("--unfreeze-embeddings", action="store_true", help="Also train vocabulary embeddings; increases optimizer memory and checkpoint size")
             p.add_argument("--device", default="cuda")
+            p.add_argument("--release-config", type=Path, help="configs/team_evaluation.json; trains on a released fit fold instead of an internal holdout")
+            p.add_argument("--fold-id", help="Released fold to fit and score; required with --release-config")
+            p.add_argument("--fold-epoch-policy", choices=("fixed", "best"), default="fixed",
+                           help="fixed: report the last epoch (no validation selection); best: select epoch on fold validation")
+    infer = sub.add_parser("infer", help="Frozen saved reader on any claims + three-passage rankings (input intervention)")
+    infer.add_argument("--model", type=Path, required=True, help="Saved final_model directory")
+    infer.add_argument("--claims", type=Path, required=True)
+    infer.add_argument("--rankings", type=Path, required=True)
+    infer.add_argument("--output", type=Path, required=True)
+    infer.add_argument("--preparation", type=Path, help="preparation.json supplying max_length/claim_budget used in training")
+    infer.add_argument("--batch-size", type=int, default=8)
+    infer.add_argument("--device", default="cuda")
+    mech = sub.add_parser("mechanics", help="Inspect a saved reader run and optionally re-score saved predictions")
+    mech.add_argument("--run", type=Path, required=True, help="Saved pair-reader run directory, e.g. .../pair/raw_sample_d01")
+    mech.add_argument("--output", type=Path, required=True, help="Personal output directory for the mechanics report")
+    mech.add_argument("--data-root", type=Path, help="Needed to join saved predictions to claims/rankings")
+    mech.add_argument("--prepared", type=Path, help="Prepared evidence directory used by the run")
+    mech.add_argument("--rescore-limit", type=int, default=0, help="Re-run frozen inference on the first N dev claims and compare probabilities")
+    mech.add_argument("--device", default="cuda")
     args = parser.parse_args()
     for name in ("max_candidates", "candidate_depth", "batch_size", "epochs", "accumulation"):
         if hasattr(args, name) and getattr(args, name) < 1:
@@ -59,9 +78,19 @@ def main():
             parser.error("Invalid text length or smoke-test limit")
         from src.retrieval.evidence_pipeline import prepare_pipeline
         prepare_pipeline(args)
+    elif args.command == "infer":
+        from src.verification.local_reader import infer_rankings
+        print(infer_rankings(args)["macro_f1"])
+    elif args.command == "mechanics":
+        if args.rescore_limit < 0 or (args.rescore_limit and not (args.data_root and args.prepared)):
+            parser.error("--rescore-limit needs --data-root and --prepared and must be non-negative")
+        from src.verification.reader_mechanics import mechanics_check
+        mechanics_check(args)
     elif args.command == "train":
         if any(lr <= 0 for lr in args.learning_rates) or args.distillation_weight < 0:
             parser.error("Invalid learning rates or distillation weight")
+        if bool(args.release_config) != bool(args.fold_id):
+            parser.error("--release-config and --fold-id must be given together")
         from src.verification.pair_training import train_reader
         train_reader(args)
     else:

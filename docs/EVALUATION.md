@@ -50,7 +50,11 @@ This does not block implementation work that does not use validation labels.
 
 Before release, agree on the manifest schema and loader across model runners.
 Current helper functions are useful building blocks,
-but the pair-reader CLI does not yet accept a shared manifest or temporal policy.
+Teammate B has added a *proposed* loader, [team_release.py](../src/evaluation/team_release.py),
+which verifies the pointer, manifest hash, fold IDs, overlap and time order; its
+docstring gives the proposed manifest schema. `run_evidence_reader.py train` and
+`train_transformer_verifier.py` accept `--release-config` and `--fold-id`. Confirm
+or amend that schema with the release owner and C before publishing the manifest.
 
 ## Loading the published path in Colab
 

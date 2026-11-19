@@ -25,6 +25,7 @@ from scripts.train_tfidf_logreg import attach_retrieved_evidence  # noqa: E402
 from src.data.averitec import CANONICAL_LABELS  # noqa: E402
 from src.evaluation.classification import evaluate_predictions  # noqa: E402
 from src.evaluation.splits import selection_split  # noqa: E402
+from src.evaluation.team_release import fold_rows, load_release_fold  # noqa: E402
 from src.utils.io import read_jsonl, write_json, write_jsonl  # noqa: E402
 from src.utils.progress import progress  # noqa: E402
 from src.utils.runs import resolve_run_directory, sha256_file, write_run_manifest  # noqa: E402
@@ -161,7 +162,14 @@ def main() -> None:
     parser.add_argument("--selection-only", action="store_true", help="Stop after train-only holdout evaluation; do not refit or score dev.")
     parser.add_argument("--refit-epoch-policy", choices=("requested", "best_checkpoint"), default="requested",
                         help="Refit for the grid epoch count (legacy) or the epoch of the checkpoint actually selected on train holdout.")
+    parser.add_argument("--release-config", type=Path, help="configs/team_evaluation.json; fit on a released fold and score its validation IDs only")
+    parser.add_argument("--fold-id", help="Released fold ID; required with --release-config")
     args = parser.parse_args()
+    if bool(args.release_config) != bool(args.fold_id):
+        parser.error("--release-config and --fold-id must be given together")
+    if args.release_config:
+        # A fold result is its validation score; a full-train refit would consume those IDs.
+        args.selection_only = True
 
     if args.max_length < 32 or args.claim_token_budget < 1 or args.evidence_token_budget < 1:
         parser.error("Token lengths must be positive and max-length must be at least 32")
@@ -191,9 +199,15 @@ def main() -> None:
     train_records = attach_rankings(read_jsonl(train_path), args.train_rankings)
     eval_records = attach_rankings(read_jsonl(eval_path), args.eval_rankings)
     validation_seed = args.seed if args.validation_seed is None else args.validation_seed
-    train_indices, validation_indices = selection_split(train_records, args.validation_fraction, validation_seed, args.validation_policy)
-    selection_train_records = [train_records[int(index)] for index in train_indices]
-    validation_records = [train_records[int(index)] for index in validation_indices]
+    fold = None
+    if args.release_config:
+        fold = load_release_fold(args.release_config, args.data_root, args.fold_id, train_records,
+                                 train_claims_path=train_path, forbidden_ids={str(r["claim_id"]) for r in eval_records})
+        selection_train_records, validation_records = fold_rows(train_records, fold)
+    else:
+        train_indices, validation_indices = selection_split(train_records, args.validation_fraction, validation_seed, args.validation_policy)
+        selection_train_records = [train_records[int(index)] for index in train_indices]
+        validation_records = [train_records[int(index)] for index in validation_indices]
 
     config = {
         "script": "train_transformer_verifier",
@@ -221,6 +235,11 @@ def main() -> None:
         "refit_epoch_policy": args.refit_epoch_policy,
         "split_policy": f"official train split with internal {args.validation_policy} validation; official dev evaluated after refit",
     }
+    if fold is not None:
+        # Added only in release mode so historical run configurations still resume.
+        config["release"] = fold.binding()
+        config["validation_policy"] = "released_fold"
+        config["split_policy"] = f"released fold {fold.fold_id} of {fold.protocol_id}; validation IDs scored, no full-train refit"
     config_path = output_dir / "transformer_run_config.json"
     existing_config = read_json(config_path)
     if existing_config is not None:
@@ -450,6 +469,10 @@ def main() -> None:
         "selection_train_claim_ids": [r["claim_id"] for r in selection_train_records],
         "selection_validation_claim_ids": [r["claim_id"] for r in validation_records],
     }
+    if fold is not None:
+        selection_report["release"] = fold.binding()
+        selection_report["caveat"] = ("Each trial keeps its best validation epoch, so the fold score is optimistic; "
+                                      "use a single learning rate/epoch grid point for an unselected reference score.")
     write_json(selection_report, output_dir / "model_selection.json")
     if args.selection_only:
         print(json.dumps({k: v for k, v in selection_report.items() if not k.endswith("claim_ids")}, indent=2))
